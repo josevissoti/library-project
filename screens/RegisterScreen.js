@@ -23,17 +23,12 @@ export default function RegisterScreen({ navigation }) {
   
   const [errors, setErrors] = useState({});
 
-  // Função para aplicar máscara de telefone
   const maskPhone = (value) => {
-    // Remove tudo que não é número
     const numbers = value.replace(/\D/g, '');
     
-    // Aplica a máscara (99) 99999-9999
     if (numbers.length <= 10) {
-      // Formato (99) 9999-9999
       return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
     } else {
-      // Formato (99) 99999-9999
       return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
     }
   };
@@ -51,35 +46,30 @@ export default function RegisterScreen({ navigation }) {
   const handleRegister = () => {
     const newErrors = {};
     
-    // Validação do nome
     if (!name) {
       newErrors.name = 'Nome é obrigatório';
     } else if (name.length < 3) {
       newErrors.name = 'Nome deve ter pelo menos 3 caracteres';
     }
     
-    // Validação do telefone
     if (!phone) {
       newErrors.phone = 'Telefone é obrigatório';
     } else if (!validatePhone(phone)) {
       newErrors.phone = 'Telefone inválido';
     }
     
-    // Validação do email
     if (!email) {
       newErrors.email = 'E-mail é obrigatório';
     } else if (!validateEmail(email)) {
       newErrors.email = 'E-mail inválido';
     }
     
-    // Validação da senha
     if (!password) {
       newErrors.password = 'Senha é obrigatória';
     } else if (password.length < 6) {
       newErrors.password = 'Senha deve ter pelo menos 6 caracteres';
     }
     
-    // Validação da confirmação de senha
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Confirme sua senha';
     } else if (password !== confirmPassword) {
@@ -89,7 +79,6 @@ export default function RegisterScreen({ navigation }) {
     setErrors(newErrors);
     
     if (Object.keys(newErrors).length === 0) {
-      // Aqui vai a lógica de cadastro
       console.log('Cadastro:', { name, phone, email, password });
       Alert.alert(
         'Sucesso', 
@@ -116,7 +105,6 @@ export default function RegisterScreen({ navigation }) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Botão voltar */}
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}
@@ -124,18 +112,16 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.backButtonText}>← Voltar</Text>
           </TouchableOpacity>
 
-          {/* Logo */}
           <View style={styles.logoContainer}>
             <Image 
-              source={require('../../assets/images/bookstore-logo.png')} 
+              source={require('../assets/images/bookstore-logo.png')} 
               style={styles.logo}
-              resizeMode="contain"
+              resizeMode="cover"
             />
             <Text style={styles.title}>BookStore</Text>
             <Text style={styles.subtitle}>Crie sua conta</Text>
           </View>
 
-          {/* Formulário */}
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Nome completo</Text>
@@ -228,7 +214,6 @@ export default function RegisterScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Link para login */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Já tem uma conta? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>

@@ -48,7 +48,6 @@ export default function LoginScreen({ navigation }) {
     }
     
     if (isValid) {
-      // Aqui vai a lógica de login
       console.log('Login:', { email, password });
       Alert.alert('Sucesso', 'Login realizado!');
       navigation.navigate('Dashboard');
@@ -67,7 +66,6 @@ export default function LoginScreen({ navigation }) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Botão voltar */}
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}
@@ -75,18 +73,16 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.backButtonText}>← Voltar</Text>
           </TouchableOpacity>
 
-          {/* Logo */}
           <View style={styles.logoContainer}>
             <Image 
-              source={require('../../assets/images/bookstore-logo.png')} 
+              source={require('../assets/images/bookstore-logo.png')} 
               style={styles.logo}
-              resizeMode="contain"
+              resizeMode="cover"
             />
             <Text style={styles.title}>BookStore</Text>
             <Text style={styles.subtitle}>Bem-vindo de volta!</Text>
           </View>
 
-          {/* Formulário */}
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>E-mail</Text>
@@ -134,8 +130,7 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Link para cadastro */}
-          <View style={styles.footer}>
+=          <View style={styles.footer}>
             <Text style={styles.footerText}>Não tem uma conta? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
               <Text style={styles.footerLink}>Cadastre-se</Text>

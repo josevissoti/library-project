@@ -14,13 +14,11 @@ import {
 const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
-  // Animações
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    // Animação de entrada
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -46,9 +44,7 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
       
-      {/* Conteúdo principal */}
       <View style={styles.content}>
-        {/* Animação da logo */}
         <Animated.View 
           style={[
             styles.logoContainer,
@@ -59,10 +55,11 @@ export default function HomeScreen({ navigation }) {
           ]}
         >
           <View style={styles.logoWrapper}>
-            {/* Espaço para sua logo */}
-            <View style={styles.logoPlaceholder}>
-              <Text style={styles.logoEmoji}>📚</Text>
-            </View>
+            <Image 
+              source={require('../assets/images/bookstore-logo.png')} 
+              style={styles.logo}
+              resizeMode="cover"
+            />
           </View>
           <Text style={styles.appName}>BookStore</Text>
           <Text style={styles.appTagline}>
@@ -70,7 +67,6 @@ export default function HomeScreen({ navigation }) {
           </Text>
         </Animated.View>
 
-        {/* Cards de recursos */}
         <Animated.View 
           style={[
             styles.featuresContainer,
@@ -80,57 +76,9 @@ export default function HomeScreen({ navigation }) {
             }
           ]}
         >
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureEmoji}>📖</Text>
-            </View>
-            <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Milhares de livros</Text>
-              <Text style={styles.featureDescription}>
-                Romance, ficção, biografias e muito mais
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureEmoji}>🚚</Text>
-            </View>
-            <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Entrega rápida</Text>
-              <Text style={styles.featureDescription}>
-                Receba em casa ou retire na loja
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureEmoji}>💳</Text>
-            </View>
-            <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Pagamento seguro</Text>
-              <Text style={styles.featureDescription}>
-                Múltiplas formas de pagamento
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureEmoji}>⭐</Text>
-            </View>
-            <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Recomendações</Text>
-              <Text style={styles.featureDescription}>
-                Sugestões baseadas no seu gosto
-              </Text>
-            </View>
-          </View>
         </Animated.View>
       </View>
 
-      {/* Botões de ação */}
       <Animated.View 
         style={[
           styles.footer,
@@ -151,7 +99,7 @@ export default function HomeScreen({ navigation }) {
           style={styles.registerButton}
           onPress={() => navigation.navigate('Register')}
         >
-          <Text style={styles.registerButtonText}>Criar conta gratuita</Text>
+          <Text style={styles.registerButtonText}>Criar conta</Text>
         </TouchableOpacity>
 
         <Text style={styles.termsText}>
@@ -167,7 +115,7 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2e0000',
   },
   content: {
     flex: 1,
@@ -176,39 +124,25 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
   },
   logoWrapper: {
     marginBottom: 16,
   },
-  logoPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#4A90E2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#4A90E2',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  logoEmoji: {
-    fontSize: 50,
+  logo: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 16,
   },
   appName: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 8,
   },
   appTagline: {
     fontSize: 16,
-    color: '#666',
+    color: '#999',
     textAlign: 'center',
   },
   featuresContainer: {
@@ -238,9 +172,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  featureEmoji: {
-    fontSize: 24,
-  },
   featureText: {
     flex: 1,
     justifyContent: 'center',
@@ -261,12 +192,12 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   loginButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#6e0c0c',
     borderRadius: 12,
     padding: 18,
     alignItems: 'center',
     marginBottom: 12,
-    shadowColor: '#4A90E2',
+    shadowColor: '#6e0c0c',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -287,10 +218,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#4A90E2',
+    borderColor: '#6e0c0c',
   },
   registerButtonText: {
-    color: '#4A90E2',
+    color: '#6e0c0c',
     fontSize: 18,
     fontWeight: '600',
   },
@@ -301,7 +232,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   termsLink: {
-    color: '#4A90E2',
+    color: '#6e0c0c',
     fontWeight: '500',
   },
 });
