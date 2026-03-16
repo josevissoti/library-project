@@ -11,8 +11,10 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
-  Image
+  Image,
+  ActivityIndicator
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -22,6 +24,7 @@ export default function RegisterScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const maskPhone = (value) => {
     const numbers = value.replace(/\D/g, '');
@@ -43,7 +46,7 @@ export default function RegisterScreen({ navigation }) {
     return numbers.length >= 10 && numbers.length <= 11;
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     const newErrors = {};
     
     if (!name) {
@@ -79,17 +82,63 @@ export default function RegisterScreen({ navigation }) {
     setErrors(newErrors);
     
     if (Object.keys(newErrors).length === 0) {
-      console.log('Cadastro:', { name, phone, email, password });
-      Alert.alert(
-        'Sucesso', 
-        'Cadastro realizado com sucesso!',
-        [
-          { 
-            text: 'OK', 
-            onPress: () => navigation.navigate('Login')
-          }
-        ]
-      );
+      setLoading(true);
+      
+      try {
+        const usersJSON = await AsyncStorage.getItem('users');
+        const users = usersJSON ? JSON.parse(usersJSON) : [];
+        
+        const userExists = users.some(u => u.email === email);
+        
+        if (userExists) {
+          Alert.alert('Erro', 'Este e-mail já está cadastrado');
+          setLoading(false);
+          return;
+        }
+        
+        const phoneExists = users.some(u => u.phone === phone);
+        if (phoneExists) {
+          Alert.alert('Erro', 'Este telefone já está cadastrado');
+          setLoading(false);
+          return;
+        }
+        
+        const newUser = {
+          id: Date.now().toString(),
+          name,
+          phone,
+          email,
+          password,
+          createdAt: new Date().toISOString()
+        };
+        
+        users.push(newUser);
+        await AsyncStorage.setItem('users', JSON.stringify(users));
+        
+        Alert.alert(
+          'Sucesso', 
+          'Cadastro realizado com sucesso!',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => {
+                setName('');
+                setPhone('');
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
+                navigation.navigate('Login');
+              }
+            }
+          ]
+        );
+        
+      } catch (error) {
+        Alert.alert('Erro', 'Falha ao realizar cadastro. Tente novamente.');
+        console.error('Erro no cadastro:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -108,6 +157,7 @@ export default function RegisterScreen({ navigation }) {
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}
+            disabled={loading}
           >
             <Text style={styles.backButtonText}>← Voltar</Text>
           </TouchableOpacity>
@@ -134,6 +184,7 @@ export default function RegisterScreen({ navigation }) {
                   setName(text);
                   if (errors.name) setErrors({...errors, name: null});
                 }}
+                editable={!loading}
               />
               {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
             </View>
@@ -152,6 +203,7 @@ export default function RegisterScreen({ navigation }) {
                   if (errors.phone) setErrors({...errors, phone: null});
                 }}
                 maxLength={15}
+                editable={!loading}
               />
               {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
             </View>
@@ -169,6 +221,7 @@ export default function RegisterScreen({ navigation }) {
                   setEmail(text);
                   if (errors.email) setErrors({...errors, email: null});
                 }}
+                editable={!loading}
               />
               {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
             </View>
@@ -185,6 +238,7 @@ export default function RegisterScreen({ navigation }) {
                   setPassword(text);
                   if (errors.password) setErrors({...errors, password: null});
                 }}
+                editable={!loading}
               />
               {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
             </View>
@@ -201,22 +255,31 @@ export default function RegisterScreen({ navigation }) {
                   setConfirmPassword(text);
                   if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
                 }}
+                editable={!loading}
               />
               {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
             </View>
 
             <TouchableOpacity 
-              style={styles.registerButton}
+              style={[styles.registerButton, loading && styles.buttonDisabled]}
               onPress={handleRegister}
               activeOpacity={0.8}
+              disabled={loading}
             >
-              <Text style={styles.registerButtonText}>Criar conta</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.registerButtonText}>Criar conta</Text>
+              )}
             </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Já tem uma conta? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Login')}
+              disabled={loading}
+            >
               <Text style={styles.footerLink}>Faça login</Text>
             </TouchableOpacity>
           </View>
@@ -260,12 +323,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#6e0c0c',
+    color: '#fff',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#fff',
+    color: '#999',
   },
   formContainer: {
     marginBottom: 20,
@@ -312,6 +375,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 6,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   registerButtonText: {
     color: '#fff',

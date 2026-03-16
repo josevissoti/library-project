@@ -11,46 +11,57 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
-  Image
+  Image,
+  ActivityIndicator
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const validateEmail = (email) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-  };
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Erro', 'Preencha todos os campos');
+      return;
+    }
 
-  const handleLogin = () => {
-    let isValid = true;
-    
-    setEmailError('');
-    setPasswordError('');
-    
-    if (!email) {
-      setEmailError('E-mail é obrigatório');
-      isValid = false;
-    } else if (!validateEmail(email)) {
-      setEmailError('E-mail inválido');
-      isValid = false;
+    if (password.length < 6) {
+      Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres');
+      return;
     }
-    
-    if (!password) {
-      setPasswordError('Senha é obrigatória');
-      isValid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Senha deve ter pelo menos 6 caracteres');
-      isValid = false;
-    }
-    
-    if (isValid) {
-      console.log('Login:', { email, password });
-      Alert.alert('Sucesso', 'Login realizado!');
-      navigation.navigate('Dashboard');
+
+    setLoading(true);
+
+    try {
+      const usersJSON = await AsyncStorage.getItem('users');
+      const users = usersJSON ? JSON.parse(usersJSON) : [];
+      
+      const user = users.find(u => u.email === email && u.password === password);
+      
+      if (user) {
+        await AsyncStorage.setItem('userToken', 'token_' + Date.now());
+        await AsyncStorage.setItem('userData', JSON.stringify({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone
+        }));
+        
+        Alert.alert('Sucesso', `Bem-vindo, ${user.name}!`);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Dashboard' }],
+        });
+      } else {
+        Alert.alert('Erro', 'E-mail ou senha inválidos');
+      }
+    } catch (error) {
+      console.error('Erro detalhado:', error);
+      Alert.alert('Erro', 'Falha ao realizar login: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,50 +98,44 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>E-mail</Text>
               <TextInput
-                style={[styles.input, emailError ? styles.inputError : null]}
+                style={styles.input}
                 placeholder="Digite seu e-mail"
                 placeholderTextColor="#999"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  setEmailError('');
-                }}
+                onChangeText={setEmail}
+                editable={!loading}
               />
-              {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Senha</Text>
               <TextInput
-                style={[styles.input, passwordError ? styles.inputError : null]}
+                style={styles.input}
                 placeholder="Digite sua senha"
                 placeholderTextColor="#999"
                 secureTextEntry
                 value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  setPasswordError('');
-                }}
+                onChangeText={setPassword}
+                editable={!loading}
               />
-              {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
             </View>
 
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity 
-              style={styles.loginButton}
+              style={[styles.loginButton, loading && styles.buttonDisabled]}
               onPress={handleLogin}
-              activeOpacity={0.8}
+              disabled={loading}
             >
-              <Text style={styles.loginButtonText}>Entrar</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Entrar</Text>
+              )}
             </TouchableOpacity>
           </View>
 
-=          <View style={styles.footer}>
+          <View style={styles.footer}>
             <Text style={styles.footerText}>Não tem uma conta? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
               <Text style={styles.footerLink}>Cadastre-se</Text>
@@ -176,12 +181,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#6e0c0c',
+    color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#fff',
+    color: '#999',
   },
   formContainer: {
     marginBottom: 30,
@@ -204,30 +209,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  inputError: {
-    borderColor: '#ff6b6b',
-    borderWidth: 2,
-  },
-  errorText: {
-    color: '#ff6b6b',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: '#6e0c0c',
-    fontSize: 14,
-    fontWeight: '500',
-  },
   loginButton: {
     backgroundColor: '#6e0c0c',
     borderRadius: 15,
     padding: 18,
     alignItems: 'center',
+    marginTop: 10,
     shadowColor: '#6e0c0c',
     shadowOffset: {
       width: 0,
@@ -236,6 +223,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 6,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   loginButtonText: {
     color: '#fff',
