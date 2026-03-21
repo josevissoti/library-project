@@ -10,11 +10,10 @@ import {
   ScrollView,
   SafeAreaView,
   StatusBar,
-  Alert,
   Image,
   ActivityIndicator
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../services/firebase';
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -25,6 +24,15 @@ export default function RegisterScreen({ navigation }) {
   
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' }); // type: 'success', 'error', ''
+
+  const showMessage = (text, type) => {
+    setMessage({ text, type });
+    // Limpar mensagem após 3 segundos
+    setTimeout(() => {
+      setMessage({ text: '', type: '' });
+    }, 3000);
+  };
 
   const maskPhone = (value) => {
     const numbers = value.replace(/\D/g, '');
@@ -58,13 +66,13 @@ export default function RegisterScreen({ navigation }) {
     if (!phone) {
       newErrors.phone = 'Telefone é obrigatório';
     } else if (!validatePhone(phone)) {
-      newErrors.phone = 'Telefone inválido';
+      newErrors.phone = 'Telefone inválido (DDD + 8 ou 9 dígitos)';
     }
     
     if (!email) {
       newErrors.email = 'E-mail é obrigatório';
     } else if (!validateEmail(email)) {
-      newErrors.email = 'E-mail inválido';
+      newErrors.email = 'E-mail inválido (exemplo: nome@dominio.com)';
     }
     
     if (!password) {
@@ -83,62 +91,49 @@ export default function RegisterScreen({ navigation }) {
     
     if (Object.keys(newErrors).length === 0) {
       setLoading(true);
+      setMessage({ text: '', type: '' });
       
       try {
-        const usersJSON = await AsyncStorage.getItem('users');
-        const users = usersJSON ? JSON.parse(usersJSON) : [];
-        
-        const userExists = users.some(u => u.email === email);
-        
-        if (userExists) {
-          Alert.alert('Erro', 'Este e-mail já está cadastrado');
-          setLoading(false);
-          return;
-        }
-        
-        const phoneExists = users.some(u => u.phone === phone);
-        if (phoneExists) {
-          Alert.alert('Erro', 'Este telefone já está cadastrado');
-          setLoading(false);
-          return;
-        }
-        
-        const newUser = {
-          id: Date.now().toString(),
+        await authService.registerUser({
           name,
           phone,
           email,
-          password,
-          createdAt: new Date().toISOString()
-        };
+          password
+        });
         
-        users.push(newUser);
-        await AsyncStorage.setItem('users', JSON.stringify(users));
+        showMessage('Cadastro realizado com sucesso! Redirecionando...', 'success');
         
-        Alert.alert(
-          'Sucesso', 
-          'Cadastro realizado com sucesso!',
-          [
-            { 
-              text: 'OK', 
-              onPress: () => {
-                setName('');
-                setPhone('');
-                setEmail('');
-                setPassword('');
-                setConfirmPassword('');
-                navigation.navigate('Login');
-              }
-            }
-          ]
-        );
+        // Limpar formulário após sucesso
+        setTimeout(() => {
+          setName('');
+          setPhone('');
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setErrors({});
+          navigation.navigate('Login');
+        }, 2000);
         
       } catch (error) {
-        Alert.alert('Erro', 'Falha ao realizar cadastro. Tente novamente.');
+        let errorMessage = 'Falha ao realizar cadastro. Tente novamente.';
+        
+        if (error.message.includes('e-mail já está cadastrado')) {
+          errorMessage = 'Este e-mail já está cadastrado. Use outro e-mail ou faça login.';
+        } else if (error.message.includes('telefone já está cadastrado')) {
+          errorMessage = 'Este telefone já está cadastrado. Use outro número.';
+        } else if (error.message.includes('rede')) {
+          errorMessage = 'Erro de conexão. Verifique sua internet.';
+        }
+        
+        showMessage(errorMessage, 'error');
         console.error('Erro no cadastro:', error);
       } finally {
         setLoading(false);
       }
+    } else {
+      // Mostrar primeiro erro encontrado
+      const firstError = Object.values(newErrors)[0];
+      showMessage(firstError, 'error');
     }
   };
 
@@ -172,17 +167,25 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.subtitle}>Crie sua conta</Text>
           </View>
 
+          {/* Mensagem de feedback */}
+          {message.text !== '' && (
+            <View style={[styles.messageContainer, message.type === 'success' ? styles.successMessage : styles.errorMessage]}>
+              <Text style={styles.messageText}>{message.text}</Text>
+            </View>
+          )}
+
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Nome completo</Text>
               <TextInput
                 style={[styles.input, errors.name ? styles.inputError : null]}
-                placeholder="Digite seu nome"
+                placeholder="Digite seu nome completo"
                 placeholderTextColor="#999"
                 value={name}
                 onChangeText={(text) => {
                   setName(text);
                   if (errors.name) setErrors({...errors, name: null});
+                  if (message.text) setMessage({ text: '', type: '' });
                 }}
                 editable={!loading}
               />
@@ -201,6 +204,7 @@ export default function RegisterScreen({ navigation }) {
                   const masked = maskPhone(text);
                   setPhone(masked);
                   if (errors.phone) setErrors({...errors, phone: null});
+                  if (message.text) setMessage({ text: '', type: '' });
                 }}
                 maxLength={15}
                 editable={!loading}
@@ -212,14 +216,16 @@ export default function RegisterScreen({ navigation }) {
               <Text style={styles.label}>E-mail</Text>
               <TextInput
                 style={[styles.input, errors.email ? styles.inputError : null]}
-                placeholder="Digite seu e-mail"
+                placeholder="exemplo@email.com"
                 placeholderTextColor="#999"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="email"
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
                   if (errors.email) setErrors({...errors, email: null});
+                  if (message.text) setMessage({ text: '', type: '' });
                 }}
                 editable={!loading}
               />
@@ -237,6 +243,7 @@ export default function RegisterScreen({ navigation }) {
                 onChangeText={(text) => {
                   setPassword(text);
                   if (errors.password) setErrors({...errors, password: null});
+                  if (message.text) setMessage({ text: '', type: '' });
                 }}
                 editable={!loading}
               />
@@ -254,6 +261,7 @@ export default function RegisterScreen({ navigation }) {
                 onChangeText={(text) => {
                   setConfirmPassword(text);
                   if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
+                  if (message.text) setMessage({ text: '', type: '' });
                 }}
                 editable={!loading}
               />
@@ -329,6 +337,24 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#999',
+  },
+  messageContainer: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  successMessage: {
+    backgroundColor: '#4caf50',
+  },
+  errorMessage: {
+    backgroundColor: '#f44336',
+  },
+  messageText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   formContainer: {
     marginBottom: 20,

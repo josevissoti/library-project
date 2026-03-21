@@ -10,56 +10,65 @@ import {
   ScrollView,
   SafeAreaView,
   StatusBar,
-  Alert,
   Image,
   ActivityIndicator
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../services/firebase';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' }); // type: 'success', 'error', ''
+
+  const showMessage = (text, type) => {
+    setMessage({ text, type });
+    // Limpar mensagem após 3 segundos
+    setTimeout(() => {
+      setMessage({ text: '', type: '' });
+    }, 3000);
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Erro', 'Preencha todos os campos');
+      showMessage('Por favor, preencha todos os campos', 'error');
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres');
+    // Validação básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showMessage('Por favor, insira um e-mail válido', 'error');
       return;
     }
 
     setLoading(true);
+    setMessage({ text: '', type: '' });
 
     try {
-      const usersJSON = await AsyncStorage.getItem('users');
-      const users = usersJSON ? JSON.parse(usersJSON) : [];
+      const user = await authService.loginUser(email, password);
+      showMessage(`Bem-vindo(a), ${user.name}!`, 'success');
       
-      const user = users.find(u => u.email === email && u.password === password);
-      
-      if (user) {
-        await AsyncStorage.setItem('userToken', 'token_' + Date.now());
-        await AsyncStorage.setItem('userData', JSON.stringify({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone
-        }));
-        
-        Alert.alert('Sucesso', `Bem-vindo, ${user.name}!`);
+      // Aguardar um pouco para mostrar a mensagem antes de navegar
+      setTimeout(() => {
         navigation.reset({
           index: 0,
           routes: [{ name: 'Dashboard' }],
         });
-      } else {
-        Alert.alert('Erro', 'E-mail ou senha inválidos');
-      }
+      }, 1500);
+      
     } catch (error) {
-      console.error('Erro detalhado:', error);
-      Alert.alert('Erro', 'Falha ao realizar login: ' + error.message);
+      let errorMessage = 'Falha ao realizar login. Verifique suas credenciais.';
+      
+      if (error.message.includes('E-mail ou senha inválidos')) {
+        errorMessage = 'E-mail ou senha incorretos. Tente novamente.';
+      } else if (error.message.includes('usuário não encontrado')) {
+        errorMessage = 'Usuário não encontrado. Verifique seu e-mail.';
+      } else if (error.message.includes('rede')) {
+        errorMessage = 'Erro de conexão. Verifique sua internet.';
+      }
+      
+      showMessage(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -80,6 +89,7 @@ export default function LoginScreen({ navigation }) {
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}
+            disabled={loading}
           >
             <Text style={styles.backButtonText}>← Voltar</Text>
           </TouchableOpacity>
@@ -94,6 +104,13 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.subtitle}>Bem-vindo de volta!</Text>
           </View>
 
+          {/* Mensagem de feedback */}
+          {message.text !== '' && (
+            <View style={[styles.messageContainer, message.type === 'success' ? styles.successMessage : styles.errorMessage]}>
+              <Text style={styles.messageText}>{message.text}</Text>
+            </View>
+          )}
+
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>E-mail</Text>
@@ -103,6 +120,7 @@ export default function LoginScreen({ navigation }) {
                 placeholderTextColor="#999"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="email"
                 value={email}
                 onChangeText={setEmail}
                 editable={!loading}
@@ -126,9 +144,10 @@ export default function LoginScreen({ navigation }) {
               style={[styles.loginButton, loading && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={loading}
+              activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color="#fff" size="large" />
               ) : (
                 <Text style={styles.loginButtonText}>Entrar</Text>
               )}
@@ -137,7 +156,10 @@ export default function LoginScreen({ navigation }) {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Não tem uma conta? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Register')}
+              disabled={loading}
+            >
               <Text style={styles.footerLink}>Cadastre-se</Text>
             </TouchableOpacity>
           </View>
@@ -187,6 +209,24 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#999',
+  },
+  messageContainer: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  successMessage: {
+    backgroundColor: '#4caf50',
+  },
+  errorMessage: {
+    backgroundColor: '#f44336',
+  },
+  messageText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   formContainer: {
     marginBottom: 30,

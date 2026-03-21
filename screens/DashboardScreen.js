@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DashboardScreen({ navigation }) {
   const [userName, setUserName] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -23,13 +25,15 @@ export default function DashboardScreen({ navigation }) {
       if (userData) {
         const user = JSON.parse(userData);
         setUserName(user.name || 'Usuário');
+      } else {
+        navigation.replace('Home');
       }
     } catch (error) {
       console.error('Erro ao carregar usuário:', error);
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
       'Sair',
       'Tem certeza que deseja sair?',
@@ -39,15 +43,20 @@ export default function DashboardScreen({ navigation }) {
           text: 'Sair',
           style: 'destructive',
           onPress: async () => {
+            setLoading(true);
             try {
+              // Limpar AsyncStorage
               await AsyncStorage.removeItem('userToken');
               await AsyncStorage.removeItem('userData');
+              
+              // Redirecionar para Home
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Home' }],
               });
             } catch (error) {
               Alert.alert('Erro', 'Falha ao fazer logout');
+              setLoading(false);
             }
           }
         }
@@ -61,8 +70,16 @@ export default function DashboardScreen({ navigation }) {
       
       <View style={styles.header}>
         <Text style={styles.headerTitle}>BookStore</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Sair</Text>
+        <TouchableOpacity 
+          onPress={handleLogout} 
+          style={styles.logoutButton}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.logoutText}>Sair</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -73,6 +90,10 @@ export default function DashboardScreen({ navigation }) {
         </View>
 
         <View style={styles.dashboardCard}>
+          <Text style={styles.cardTitle}>Sua Biblioteca</Text>
+          <Text style={styles.cardText}>
+            Explore, descubra novos livros e gerencie sua coleção favorita!
+          </Text>
         </View>
 
         <View style={styles.statsContainer}>
@@ -115,9 +136,12 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   logoutButton: {
-    padding: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     backgroundColor: '#6e0c0c',
     borderRadius: 8,
+    minWidth: 60,
+    alignItems: 'center',
   },
   logoutText: {
     color: '#fff',
@@ -169,15 +193,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 15,
-    lineHeight: 20,
-  },
-  featureList: {
-    marginTop: 5,
-  },
-  featureItem: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 8,
     lineHeight: 20,
   },
   statsContainer: {
