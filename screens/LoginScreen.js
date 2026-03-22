@@ -11,22 +11,31 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
-  ActivityIndicator
+  ActivityIndicator,
+  Dimensions
 } from 'react-native';
 import { authService } from '../services/firebase';
+
+const { width } = Dimensions.get('window');
+const isTablet = width >= 768;
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ text: '', type: '' }); // type: 'success', 'error', ''
+  const [message, setMessage] = useState({ text: '', type: '' });
 
   const showMessage = (text, type) => {
     setMessage({ text, type });
-    // Limpar mensagem após 3 segundos
     setTimeout(() => {
       setMessage({ text: '', type: '' });
     }, 3000);
+  };
+
+  // Validação de email
+  const validateEmail = (email) => {
+    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return regex.test(email);
   };
 
   const handleLogin = async () => {
@@ -35,10 +44,8 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    // Validação básica de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      showMessage('Por favor, insira um e-mail válido', 'error');
+    if (!validateEmail(email)) {
+      showMessage('Por favor, insira um e-mail válido (exemplo: nome@dominio.com)', 'error');
       return;
     }
 
@@ -49,7 +56,6 @@ export default function LoginScreen({ navigation }) {
       const user = await authService.loginUser(email, password);
       showMessage(`Bem-vindo(a), ${user.name}!`, 'success');
       
-      // Aguardar um pouco para mostrar a mensagem antes de navegar
       setTimeout(() => {
         navigation.reset({
           index: 0,
@@ -64,8 +70,6 @@ export default function LoginScreen({ navigation }) {
         errorMessage = 'E-mail ou senha incorretos. Tente novamente.';
       } else if (error.message.includes('usuário não encontrado')) {
         errorMessage = 'Usuário não encontrado. Verifique seu e-mail.';
-      } else if (error.message.includes('rede')) {
-        errorMessage = 'Erro de conexão. Verifique sua internet.';
       }
       
       showMessage(errorMessage, 'error');
@@ -94,74 +98,75 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.backButtonText}>← Voltar</Text>
           </TouchableOpacity>
 
-          <View style={styles.logoContainer}>
-            <Image 
-              source={require('../assets/images/bookstore-logo.png')} 
-              style={styles.logo}
-              resizeMode="cover"
-            />
-            <Text style={styles.title}>BookStore</Text>
-            <Text style={styles.subtitle}>Bem-vindo de volta!</Text>
-          </View>
-
-          {/* Mensagem de feedback */}
-          {message.text !== '' && (
-            <View style={[styles.messageContainer, message.type === 'success' ? styles.successMessage : styles.errorMessage]}>
-              <Text style={styles.messageText}>{message.text}</Text>
-            </View>
-          )}
-
-          <View style={styles.formContainer}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>E-mail</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Digite seu e-mail"
-                placeholderTextColor="#999"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                value={email}
-                onChangeText={setEmail}
-                editable={!loading}
+          <View style={styles.contentWrapper}>
+            <View style={styles.logoContainer}>
+              <Image 
+                source={require('../assets/images/bookstore-logo.png')} 
+                style={styles.logo}
+                resizeMode="cover"
               />
+              <Text style={styles.title}>BookStore</Text>
+              <Text style={styles.subtitle}>Bem-vindo de volta!</Text>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Senha</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Digite sua senha"
-                placeholderTextColor="#999"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-                editable={!loading}
-              />
+            {message.text !== '' && (
+              <View style={[styles.messageContainer, message.type === 'success' ? styles.successMessage : styles.errorMessage]}>
+                <Text style={styles.messageText}>{message.text}</Text>
+              </View>
+            )}
+
+            <View style={styles.formContainer}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>E-mail</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Digite seu e-mail"
+                  placeholderTextColor="#999"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  value={email}
+                  onChangeText={setEmail}
+                  editable={!loading}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Senha</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Digite sua senha"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!loading}
+                />
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.loginButton, loading && styles.buttonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="large" />
+                ) : (
+                  <Text style={styles.loginButtonText}>Entrar</Text>
+                )}
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity 
-              style={[styles.loginButton, loading && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="large" />
-              ) : (
-                <Text style={styles.loginButtonText}>Entrar</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Não tem uma conta? </Text>
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('Register')}
-              disabled={loading}
-            >
-              <Text style={styles.footerLink}>Cadastre-se</Text>
-            </TouchableOpacity>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Não tem uma conta? </Text>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('Register')}
+                disabled={loading}
+              >
+                <Text style={styles.footerLink}>Cadastre-se</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -179,7 +184,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: isTablet ? 48 : 24,
     paddingTop: 20,
     paddingBottom: 30,
   },
@@ -188,26 +193,31 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: isTablet ? 18 : 16,
+  },
+  contentWrapper: {
+    maxWidth: isTablet ? 500 : '100%',
+    width: '100%',
+    alignSelf: 'center',
   },
   logoContainer: {
     alignItems: 'center',
     marginBottom: 40,
   },
   logo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: isTablet ? 120 : 100,
+    height: isTablet ? 120 : 100,
+    borderRadius: isTablet ? 60 : 50,
     marginBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: isTablet ? 32 : 28,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: isTablet ? 18 : 16,
     color: '#999',
   },
   messageContainer: {
@@ -224,7 +234,7 @@ const styles = StyleSheet.create({
   },
   messageText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: isTablet ? 15 : 14,
     fontWeight: '500',
     textAlign: 'center',
   },
@@ -235,7 +245,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    fontSize: 14,
+    fontSize: isTablet ? 16 : 14,
     fontWeight: '600',
     color: '#fff',
     marginBottom: 8,
@@ -243,8 +253,8 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    padding: isTablet ? 18 : 16,
+    fontSize: isTablet ? 17 : 16,
     color: '#333',
     borderWidth: 1,
     borderColor: '#e0e0e0',
@@ -252,7 +262,7 @@ const styles = StyleSheet.create({
   loginButton: {
     backgroundColor: '#6e0c0c',
     borderRadius: 15,
-    padding: 18,
+    padding: isTablet ? 18 : 16,
     alignItems: 'center',
     marginTop: 10,
     shadowColor: '#6e0c0c',
@@ -269,7 +279,7 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: isTablet ? 18 : 16,
     fontWeight: 'bold',
   },
   footer: {
@@ -279,11 +289,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     color: '#999',
-    fontSize: 16,
+    fontSize: isTablet ? 16 : 14,
   },
   footerLink: {
     color: '#6e0c0c',
-    fontSize: 16,
+    fontSize: isTablet ? 16 : 14,
     fontWeight: 'bold',
   },
 });

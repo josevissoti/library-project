@@ -3,7 +3,6 @@ import { authService } from './firebase';
 
 export const migrateExistingUsers = async () => {
   try {
-    // Buscar usuários existentes no AsyncStorage
     const usersJSON = await AsyncStorage.getItem('users');
     if (usersJSON) {
       const users = JSON.parse(usersJSON);
@@ -12,11 +11,9 @@ export const migrateExistingUsers = async () => {
       
       for (const user of users) {
         try {
-          // Verificar se o usuário já existe no Firebase
           const emailExists = await authService.checkEmailExists(user.email);
           
           if (!emailExists) {
-            // Migrar usuário para o Firebase
             await authService.registerUser({
               name: user.name,
               email: user.email,

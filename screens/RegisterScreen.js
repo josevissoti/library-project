@@ -11,9 +11,13 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
-  ActivityIndicator
+  ActivityIndicator,
+  Dimensions
 } from 'react-native';
 import { authService } from '../services/firebase';
+
+const { width } = Dimensions.get('window');
+const isTablet = width >= 768;
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -24,11 +28,16 @@ export default function RegisterScreen({ navigation }) {
   
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ text: '', type: '' }); // type: 'success', 'error', ''
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const [passwordStrength, setPasswordStrength] = useState({
+    hasLength: false,
+    hasUpperCase: false,
+    hasNumber: false,
+    hasSymbol: false
+  });
 
   const showMessage = (text, type) => {
     setMessage({ text, type });
-    // Limpar mensagem após 3 segundos
     setTimeout(() => {
       setMessage({ text: '', type: '' });
     }, 3000);
@@ -45,7 +54,7 @@ export default function RegisterScreen({ navigation }) {
   };
 
   const validateEmail = (email) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return regex.test(email);
   };
 
@@ -54,31 +63,79 @@ export default function RegisterScreen({ navigation }) {
     return numbers.length >= 10 && numbers.length <= 11;
   };
 
+  const validatePasswordStrength = (password) => {
+    const hasLength = password.length >= 8 && password.length <= 30;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    setPasswordStrength({
+      hasLength,
+      hasUpperCase,
+      hasNumber,
+      hasSymbol
+    });
+    
+    return hasLength && hasUpperCase && hasNumber && hasSymbol;
+  };
+
+  const getPasswordStrengthMessage = () => {
+    const { hasLength, hasUpperCase, hasNumber, hasSymbol } = passwordStrength;
+    
+    if (!hasLength) return 'A senha deve ter entre 8 e 30 caracteres';
+    if (!hasUpperCase) return 'A senha deve conter pelo menos uma letra maiúscula';
+    if (!hasNumber) return 'A senha deve conter pelo menos um número';
+    if (!hasSymbol) return 'A senha deve conter pelo menos um símbolo (!@#$%^&*)';
+    return 'Senha forte!';
+  };
+
+  const getPasswordStrengthColor = () => {
+    const { hasLength, hasUpperCase, hasNumber, hasSymbol } = passwordStrength;
+    const allValid = hasLength && hasUpperCase && hasNumber && hasSymbol;
+    
+    if (allValid) return '#4caf50';
+    if (hasLength || hasUpperCase || hasNumber || hasSymbol) return '#ff9800';
+    return '#f44336';
+  };
+
   const handleRegister = async () => {
     const newErrors = {};
-    
+
     if (!name) {
       newErrors.name = 'Nome é obrigatório';
     } else if (name.length < 3) {
       newErrors.name = 'Nome deve ter pelo menos 3 caracteres';
+    } else if (name.length > 100) {
+      newErrors.name = 'Nome deve ter no máximo 100 caracteres';
     }
     
+    // Validação do telefone
     if (!phone) {
       newErrors.phone = 'Telefone é obrigatório';
     } else if (!validatePhone(phone)) {
       newErrors.phone = 'Telefone inválido (DDD + 8 ou 9 dígitos)';
     }
     
+    // Validação avançada de email
     if (!email) {
       newErrors.email = 'E-mail é obrigatório';
     } else if (!validateEmail(email)) {
       newErrors.email = 'E-mail inválido (exemplo: nome@dominio.com)';
     }
     
+    // Validação avançada de senha
     if (!password) {
       newErrors.password = 'Senha é obrigatória';
-    } else if (password.length < 6) {
-      newErrors.password = 'Senha deve ter pelo menos 6 caracteres';
+    } else if (password.length < 8) {
+      newErrors.password = 'Senha deve ter no mínimo 8 caracteres';
+    } else if (password.length > 30) {
+      newErrors.password = 'Senha deve ter no máximo 30 caracteres';
+    } else if (!/[A-Z]/.test(password)) {
+      newErrors.password = 'Senha deve conter pelo menos uma letra maiúscula';
+    } else if (!/[0-9]/.test(password)) {
+      newErrors.password = 'Senha deve conter pelo menos um número';
+    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      newErrors.password = 'Senha deve conter pelo menos um símbolo (!@#$%^&*)';
     }
     
     if (!confirmPassword) {
@@ -97,13 +154,12 @@ export default function RegisterScreen({ navigation }) {
         await authService.registerUser({
           name,
           phone,
-          email,
+          email: email.toLowerCase(),
           password
         });
         
         showMessage('Cadastro realizado com sucesso! Redirecionando...', 'success');
         
-        // Limpar formulário após sucesso
         setTimeout(() => {
           setName('');
           setPhone('');
@@ -111,6 +167,12 @@ export default function RegisterScreen({ navigation }) {
           setPassword('');
           setConfirmPassword('');
           setErrors({});
+          setPasswordStrength({
+            hasLength: false,
+            hasUpperCase: false,
+            hasNumber: false,
+            hasSymbol: false
+          });
           navigation.navigate('Login');
         }, 2000);
         
@@ -121,8 +183,6 @@ export default function RegisterScreen({ navigation }) {
           errorMessage = 'Este e-mail já está cadastrado. Use outro e-mail ou faça login.';
         } else if (error.message.includes('telefone já está cadastrado')) {
           errorMessage = 'Este telefone já está cadastrado. Use outro número.';
-        } else if (error.message.includes('rede')) {
-          errorMessage = 'Erro de conexão. Verifique sua internet.';
         }
         
         showMessage(errorMessage, 'error');
@@ -131,10 +191,16 @@ export default function RegisterScreen({ navigation }) {
         setLoading(false);
       }
     } else {
-      // Mostrar primeiro erro encontrado
       const firstError = Object.values(newErrors)[0];
-      showMessage(firstError, 'error');
+      showMessage(`${firstError}`, 'error');
     }
+  };
+
+  const handlePasswordChange = (text) => {
+    setPassword(text);
+    validatePasswordStrength(text);
+    if (errors.password) setErrors({...errors, password: null});
+    if (message.text) setMessage({ text: '', type: '' });
   };
 
   return (
@@ -157,139 +223,154 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.backButtonText}>← Voltar</Text>
           </TouchableOpacity>
 
-          <View style={styles.logoContainer}>
-            <Image 
-              source={require('../assets/images/bookstore-logo.png')} 
-              style={styles.logo}
-              resizeMode="cover"
-            />
-            <Text style={styles.title}>BookStore</Text>
-            <Text style={styles.subtitle}>Crie sua conta</Text>
-          </View>
-
-          {/* Mensagem de feedback */}
-          {message.text !== '' && (
-            <View style={[styles.messageContainer, message.type === 'success' ? styles.successMessage : styles.errorMessage]}>
-              <Text style={styles.messageText}>{message.text}</Text>
-            </View>
-          )}
-
-          <View style={styles.formContainer}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome completo</Text>
-              <TextInput
-                style={[styles.input, errors.name ? styles.inputError : null]}
-                placeholder="Digite seu nome completo"
-                placeholderTextColor="#999"
-                value={name}
-                onChangeText={(text) => {
-                  setName(text);
-                  if (errors.name) setErrors({...errors, name: null});
-                  if (message.text) setMessage({ text: '', type: '' });
-                }}
-                editable={!loading}
+          <View style={styles.contentWrapper}>
+            <View style={styles.logoContainer}>
+              <Image 
+                source={require('../assets/images/bookstore-logo.png')} 
+                style={styles.logo}
+                resizeMode="cover"
               />
-              {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
+              <Text style={styles.title}>BookStore</Text>
+              <Text style={styles.subtitle}>Crie sua conta</Text>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Telefone</Text>
-              <TextInput
-                style={[styles.input, errors.phone ? styles.inputError : null]}
-                placeholder="(99) 99999-9999"
-                placeholderTextColor="#999"
-                keyboardType="phone-pad"
-                value={phone}
-                onChangeText={(text) => {
-                  const masked = maskPhone(text);
-                  setPhone(masked);
-                  if (errors.phone) setErrors({...errors, phone: null});
-                  if (message.text) setMessage({ text: '', type: '' });
-                }}
-                maxLength={15}
-                editable={!loading}
-              />
-              {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
+            {message.text !== '' && (
+              <View style={[styles.messageContainer, message.type === 'success' ? styles.successMessage : styles.errorMessage]}>
+                <Text style={styles.messageText}>{message.text}</Text>
+              </View>
+            )}
+
+            <View style={styles.formContainer}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Nome completo</Text>
+                <TextInput
+                  style={[styles.input, errors.name ? styles.inputError : null]}
+                  placeholder="Digite seu nome completo"
+                  placeholderTextColor="#999"
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    if (errors.name) setErrors({...errors, name: null});
+                    if (message.text) setMessage({ text: '', type: '' });
+                  }}
+                  editable={!loading}
+                />
+                {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Telefone</Text>
+                <TextInput
+                  style={[styles.input, errors.phone ? styles.inputError : null]}
+                  placeholder="(99) 99999-9999"
+                  placeholderTextColor="#999"
+                  keyboardType="phone-pad"
+                  value={phone}
+                  onChangeText={(text) => {
+                    const masked = maskPhone(text);
+                    setPhone(masked);
+                    if (errors.phone) setErrors({...errors, phone: null});
+                    if (message.text) setMessage({ text: '', type: '' });
+                  }}
+                  maxLength={15}
+                  editable={!loading}
+                />
+                {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>E-mail</Text>
+                <TextInput
+                  style={[styles.input, errors.email ? styles.inputError : null]}
+                  placeholder="exemplo@email.com"
+                  placeholderTextColor="#999"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) setErrors({...errors, email: null});
+                    if (message.text) setMessage({ text: '', type: '' });
+                  }}
+                  editable={!loading}
+                />
+                {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Senha</Text>
+                <TextInput
+                  style={[styles.input, errors.password ? styles.inputError : null]}
+                  placeholder="Insira sua senha"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={handlePasswordChange}
+                  editable={!loading}
+                />
+                {password.length > 0 && (
+                  <View style={styles.passwordStrengthContainer}>
+                    <Text style={[styles.passwordStrengthText, { color: getPasswordStrengthColor() }]}>
+                      {getPasswordStrengthMessage()}
+                    </Text>
+                    <View style={styles.passwordStrengthBar}>
+                      <View 
+                        style={[
+                          styles.passwordStrengthFill, 
+                          { 
+                            width: `${(Object.values(passwordStrength).filter(v => v).length / 4) * 100}%`,
+                            backgroundColor: getPasswordStrengthColor()
+                          }
+                        ]} 
+                      />
+                    </View>
+                  </View>
+                )}
+                {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Confirmar senha</Text>
+                <TextInput
+                  style={[styles.input, errors.confirmPassword ? styles.inputError : null]}
+                  placeholder="Confirme sua senha"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
+                    if (message.text) setMessage({ text: '', type: '' });
+                  }}
+                  editable={!loading}
+                />
+                {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.registerButton, loading && styles.buttonDisabled]}
+                onPress={handleRegister}
+                activeOpacity={0.8}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.registerButtonText}>Criar conta</Text>
+                )}
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>E-mail</Text>
-              <TextInput
-                style={[styles.input, errors.email ? styles.inputError : null]}
-                placeholder="exemplo@email.com"
-                placeholderTextColor="#999"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (errors.email) setErrors({...errors, email: null});
-                  if (message.text) setMessage({ text: '', type: '' });
-                }}
-                editable={!loading}
-              />
-              {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Já tem uma conta? </Text>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('Login')}
+                disabled={loading}
+              >
+                <Text style={styles.footerLink}>Faça login</Text>
+              </TouchableOpacity>
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Senha</Text>
-              <TextInput
-                style={[styles.input, errors.password ? styles.inputError : null]}
-                placeholder="Mínimo 6 caracteres"
-                placeholderTextColor="#999"
-                secureTextEntry
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (errors.password) setErrors({...errors, password: null});
-                  if (message.text) setMessage({ text: '', type: '' });
-                }}
-                editable={!loading}
-              />
-              {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirmar senha</Text>
-              <TextInput
-                style={[styles.input, errors.confirmPassword ? styles.inputError : null]}
-                placeholder="Confirme sua senha"
-                placeholderTextColor="#999"
-                secureTextEntry
-                value={confirmPassword}
-                onChangeText={(text) => {
-                  setConfirmPassword(text);
-                  if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
-                  if (message.text) setMessage({ text: '', type: '' });
-                }}
-                editable={!loading}
-              />
-              {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.registerButton, loading && styles.buttonDisabled]}
-              onPress={handleRegister}
-              activeOpacity={0.8}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.registerButtonText}>Criar conta</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Já tem uma conta? </Text>
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('Login')}
-              disabled={loading}
-            >
-              <Text style={styles.footerLink}>Faça login</Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -307,7 +388,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: isTablet ? 48 : 24,
     paddingTop: 20,
     paddingBottom: 30,
   },
@@ -316,26 +397,31 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: isTablet ? 18 : 16,
+  },
+  contentWrapper: {
+    maxWidth: isTablet ? 500 : '100%',
+    width: '100%',
+    alignSelf: 'center',
   },
   logoContainer: {
     alignItems: 'center',
     marginBottom: 30,
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: isTablet ? 100 : 80,
+    height: isTablet ? 100 : 80,
+    borderRadius: isTablet ? 50 : 40,
     marginBottom: 12,
   },
   title: {
-    fontSize: 24,
+    fontSize: isTablet ? 28 : 24,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: isTablet ? 16 : 14,
     color: '#999',
   },
   messageContainer: {
@@ -352,7 +438,7 @@ const styles = StyleSheet.create({
   },
   messageText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: isTablet ? 15 : 14,
     fontWeight: '500',
     textAlign: 'center',
   },
@@ -363,7 +449,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
+    fontSize: isTablet ? 15 : 14,
     fontWeight: '600',
     color: '#fff',
     marginBottom: 6,
@@ -371,8 +457,8 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 14,
-    fontSize: 15,
+    padding: isTablet ? 16 : 14,
+    fontSize: isTablet ? 16 : 15,
     color: '#333',
     borderWidth: 1,
     borderColor: '#e0e0e0',
@@ -387,10 +473,27 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginLeft: 4,
   },
+  passwordStrengthContainer: {
+    marginTop: 8,
+  },
+  passwordStrengthText: {
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  passwordStrengthBar: {
+    height: 4,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  passwordStrengthFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
   registerButton: {
     backgroundColor: '#6e0c0c',
     borderRadius: 15,
-    padding: 16,
+    padding: isTablet ? 18 : 16,
     alignItems: 'center',
     marginTop: 10,
     shadowColor: '#6e0c0c',
@@ -407,7 +510,7 @@ const styles = StyleSheet.create({
   },
   registerButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: isTablet ? 17 : 16,
     fontWeight: 'bold',
   },
   footer: {
@@ -418,11 +521,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     color: '#999',
-    fontSize: 14,
+    fontSize: isTablet ? 15 : 14,
   },
   footerLink: {
     color: '#6e0c0c',
-    fontSize: 14,
+    fontSize: isTablet ? 15 : 14,
     fontWeight: 'bold',
   },
 });

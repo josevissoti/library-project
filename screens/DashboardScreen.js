@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,62 +6,23 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Alert,
-  ActivityIndicator
+  Dimensions
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import ShopScreen from './ShopScreen';
+import ProfileScreen from './ProfileScreen';
 
-export default function DashboardScreen({ navigation }) {
-  const [userName, setUserName] = useState('');
-  const [loading, setLoading] = useState(false);
+const { width } = Dimensions.get('window');
+const isTablet = width >= 768;
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
+export default function DashboardScreen() {
+  const [activeTab, setActiveTab] = useState('Loja');
 
-  const loadUserData = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('userData');
-      if (userData) {
-        const user = JSON.parse(userData);
-        setUserName(user.name || 'Usuário');
-      } else {
-        navigation.replace('Home');
-      }
-    } catch (error) {
-      console.error('Erro ao carregar usuário:', error);
+  const renderContent = () => {
+    if (activeTab === 'Loja') {
+      return <ShopScreen />;
+    } else {
+      return <ProfileScreen />;
     }
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Sair',
-      'Tem certeza que deseja sair?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              // Limpar AsyncStorage
-              await AsyncStorage.removeItem('userToken');
-              await AsyncStorage.removeItem('userData');
-              
-              // Redirecionar para Home
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Home' }],
-              });
-            } catch (error) {
-              Alert.alert('Erro', 'Falha ao fazer logout');
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
   };
 
   return (
@@ -70,46 +31,31 @@ export default function DashboardScreen({ navigation }) {
       
       <View style={styles.header}>
         <Text style={styles.headerTitle}>BookStore</Text>
-        <TouchableOpacity 
-          onPress={handleLogout} 
-          style={styles.logoutButton}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.logoutText}>Sair</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.tabContainer}>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'Loja' && styles.activeTab]}
+            onPress={() => setActiveTab('Loja')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabText, activeTab === 'Loja' && styles.activeTabText]}>
+              Loja
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'Perfil' && styles.activeTab]}
+            onPress={() => setActiveTab('Perfil')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabText, activeTab === 'Perfil' && styles.activeTabText]}>
+              Perfil
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
-        <View style={styles.welcomeCard}>
-          <Text style={styles.welcomeText}>Bem-vindo,</Text>
-          <Text style={styles.userName}>{userName || 'Leitor'}</Text>
-        </View>
-
-        <View style={styles.dashboardCard}>
-          <Text style={styles.cardTitle}>Sua Biblioteca</Text>
-          <Text style={styles.cardText}>
-            Explore, descubra novos livros e gerencie sua coleção favorita!
-          </Text>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Livros lidos</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Na lista</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Favoritos</Text>
-          </View>
-        </View>
+        {renderContent()}
       </View>
     </SafeAreaView>
   );
@@ -124,106 +70,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
     backgroundColor: '#1a0000',
     borderBottomWidth: 1,
     borderBottomColor: '#6e0c0c',
+    paddingHorizontal: isTablet ? 24 : 16,
+    paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: isTablet ? 24 : 20,
     fontWeight: 'bold',
     color: '#fff',
   },
-  logoutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#6e0c0c',
-    borderRadius: 8,
-    minWidth: 60,
-    alignItems: 'center',
+  tabContainer: {
+    flexDirection: 'row',
+    gap: isTablet ? 20 : 12,
   },
-  logoutText: {
-    color: '#fff',
-    fontSize: 14,
+  tab: {
+    paddingVertical: 8,
+    paddingHorizontal: isTablet ? 16 : 12,
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: '#6e0c0c',
+  },
+  tabText: {
+    fontSize: isTablet ? 16 : 14,
+    color: '#999',
     fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
-    padding: 20,
-  },
-  welcomeCard: {
-    backgroundColor: '#6e0c0c',
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 20,
-  },
-  welcomeText: {
-    fontSize: 18,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  userName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 5,
-  },
-  dashboardCard: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2e0000',
-    marginBottom: 10,
-  },
-  cardText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 15,
-    lineHeight: 20,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginHorizontal: 5,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#6e0c0c',
-    marginBottom: 5,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
   },
 });

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
+const isTablet = width >= 768;
 
 export default function HomeScreen({ navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -42,7 +43,7 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
+      <StatusBar barStyle="light-content" backgroundColor="#2e0000" />
       
       <View style={styles.content}>
         <Animated.View 
@@ -66,17 +67,6 @@ export default function HomeScreen({ navigation }) {
             Sua livraria virtual favorita
           </Text>
         </Animated.View>
-
-        <Animated.View 
-          style={[
-            styles.featuresContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
-          ]}
-        >
-        </Animated.View>
       </View>
 
       <Animated.View 
@@ -88,19 +78,23 @@ export default function HomeScreen({ navigation }) {
           }
         ]}
       >
-        <TouchableOpacity 
-          style={styles.loginButton}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.loginButtonText}>Entrar</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.loginButton}
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.loginButtonText}>Entrar</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.registerButton}
-          onPress={() => navigation.navigate('Register')}
-        >
-          <Text style={styles.registerButtonText}>Criar conta</Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.registerButton}
+            onPress={() => navigation.navigate('Register')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.registerButtonText}>Criar conta</Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.termsText}>
           Ao continuar, você concorda com nossos{' '}
@@ -120,81 +114,50 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    alignItems: 'center',
+    paddingHorizontal: isTablet ? 48 : 24,
   },
   logoContainer: {
     alignItems: 'center',
+    maxWidth: isTablet ? 500 : '100%',
+    width: '100%',
   },
   logoWrapper: {
     marginBottom: 16,
   },
   logo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: isTablet ? 120 : 100,
+    height: isTablet ? 120 : 100,
+    borderRadius: isTablet ? 60 : 50,
     marginBottom: 16,
   },
   appName: {
-    fontSize: 32,
+    fontSize: isTablet ? 48 : 32,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 8,
+    textAlign: 'center',
   },
   appTagline: {
-    fontSize: 16,
+    fontSize: isTablet ? 18 : 16,
     color: '#999',
     textAlign: 'center',
   },
-  featuresContainer: {
-    marginTop: 20,
-  },
-  featureCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f0f7ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  featureText: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  featureDescription: {
-    fontSize: 14,
-    color: '#666',
-  },
   footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 30,
+    paddingHorizontal: isTablet ? 48 : 24,
+    paddingBottom: isTablet ? 40 : 30,
     paddingTop: 20,
+    alignItems: 'center',
+  },
+  buttonContainer: {
+    maxWidth: isTablet ? 400 : '100%',
+    width: '100%',
+    marginBottom: 20,
   },
   loginButton: {
     backgroundColor: '#6e0c0c',
     borderRadius: 12,
-    padding: 18,
+    padding: isTablet ? 18 : 16,
     alignItems: 'center',
     marginBottom: 12,
     shadowColor: '#6e0c0c',
@@ -208,28 +171,28 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: isTablet ? 18 : 16,
     fontWeight: 'bold',
   },
   registerButton: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 18,
+    padding: isTablet ? 18 : 16,
     alignItems: 'center',
-    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#6e0c0c',
   },
   registerButtonText: {
     color: '#6e0c0c',
-    fontSize: 18,
+    fontSize: isTablet ? 18 : 16,
     fontWeight: '600',
   },
   termsText: {
     textAlign: 'center',
     color: '#999',
-    fontSize: 12,
+    fontSize: isTablet ? 13 : 12,
     lineHeight: 18,
+    maxWidth: isTablet ? 500 : '100%',
   },
   termsLink: {
     color: '#6e0c0c',
