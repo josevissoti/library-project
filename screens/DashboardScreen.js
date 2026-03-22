@@ -59,7 +59,6 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
           
-          {/* Ícone do carrinho */}
           <TouchableOpacity style={styles.cartIconContainer}>
             <Text style={styles.cartIcon}>🛒</Text>
             {cartCount > 0 && (
