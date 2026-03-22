@@ -99,7 +99,7 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Image 
-              source={require('../assets/images/bookstore-logo.png')} 
+              source={require('../assets/images/profile-image.jpg')} 
               style={styles.avatar}
             />
           </View>
