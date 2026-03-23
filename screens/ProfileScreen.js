@@ -40,7 +40,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // ESTA É A FUNÇÃO QUE FUNCIONOU - NÃO ALTERAR
   const handleLogout = async () => {
     try {
       await AsyncStorage.multiRemove(['userToken', 'userData']);

@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, get, child, push, query, orderByChild, equalTo } from "firebase/database";
+import { getDatabase, ref, set, get, push, update, remove } from "firebase/database";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
@@ -23,7 +23,6 @@ export const authService = {
   async registerUser(userData) {
     try {
       const { name, email, phone, password } = userData;
-      
       console.log('Tentando registrar usuário:', email);
 
       const emailExists = await this.checkEmailExists(email);
@@ -75,7 +74,6 @@ export const authService = {
       console.log('Tentando login:', email);
 
       const userId = await this.getUserIdByEmail(email);
-      
       if (!userId) {
         throw new Error('E-mail ou senha inválidos');
       }
@@ -169,6 +167,161 @@ export const authService = {
     } catch (error) {
       console.error('Erro ao buscar usuário atual:', error);
       return null;
+    }
+  }
+};
+
+export const booksService = {
+  // Criar um novo livro
+  async createBook(bookData, userId) {
+    try {
+      const booksRef = ref(database, `books`);
+      const newBookRef = push(booksRef);
+      
+      const book = {
+        id: newBookRef.key,
+        title: bookData.title,
+        author: bookData.author,
+        description: bookData.description,
+        price: parseFloat(bookData.price),
+        userId: userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      await set(newBookRef, book);
+      
+      // Criar índice por usuário
+      const userBooksRef = ref(database, `userBooks/${userId}/${newBookRef.key}`);
+      await set(userBooksRef, true);
+      
+      return book;
+    } catch (error) {
+      console.error('Erro ao criar livro:', error);
+      throw error;
+    }
+  },
+  
+  // Buscar todos os livros (para a loja)
+  async getAllBooks() {
+    try {
+      const booksRef = ref(database, `books`);
+      const snapshot = await get(booksRef);
+      
+      if (!snapshot.exists()) {
+        return [];
+      }
+      
+      const books = Object.values(snapshot.val());
+      // Ordenar por data de criação (mais recente primeiro)
+      return books.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } catch (error) {
+      console.error('Erro ao buscar todos os livros:', error);
+      throw error;
+    }
+  },
+  
+  // Buscar todos os livros de um usuário específico
+  async getUserBooks(userId) {
+    try {
+      const userBooksRef = ref(database, `userBooks/${userId}`);
+      const userBooksSnapshot = await get(userBooksRef);
+      
+      if (!userBooksSnapshot.exists()) {
+        return [];
+      }
+      
+      const bookIds = Object.keys(userBooksSnapshot.val());
+      const books = [];
+      
+      for (const bookId of bookIds) {
+        const bookRef = ref(database, `books/${bookId}`);
+        const bookSnapshot = await get(bookRef);
+        
+        if (bookSnapshot.exists()) {
+          books.push(bookSnapshot.val());
+        }
+      }
+      
+      return books.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } catch (error) {
+      console.error('Erro ao buscar livros do usuário:', error);
+      throw error;
+    }
+  },
+  
+  // Buscar um livro específico
+  async getBook(bookId) {
+    try {
+      const bookRef = ref(database, `books/${bookId}`);
+      const snapshot = await get(bookRef);
+      return snapshot.exists() ? snapshot.val() : null;
+    } catch (error) {
+      console.error('Erro ao buscar livro:', error);
+      throw error;
+    }
+  },
+  
+  // Atualizar um livro
+  async updateBook(bookId, bookData, userId) {
+    try {
+      const bookRef = ref(database, `books/${bookId}`);
+      const snapshot = await get(bookRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Livro não encontrado');
+      }
+      
+      const existingBook = snapshot.val();
+      
+      if (existingBook.userId !== userId) {
+        throw new Error('Você não tem permissão para editar este livro');
+      }
+      
+      const updates = {
+        title: bookData.title,
+        author: bookData.author,
+        description: bookData.description,
+        price: parseFloat(bookData.price),
+        updatedAt: new Date().toISOString()
+      };
+      
+      await update(bookRef, updates);
+      
+      return { ...existingBook, ...updates };
+    } catch (error) {
+      console.error('Erro ao atualizar livro:', error);
+      throw error;
+    }
+  },
+  
+  // Deletar um livro
+  async deleteBook(bookId, userId) {
+    try {
+      const bookRef = ref(database, `books/${bookId}`);
+      const snapshot = await get(bookRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Livro não encontrado');
+      }
+      
+      const book = snapshot.val();
+      
+      if (book.userId !== userId) {
+        throw new Error('Você não tem permissão para deletar este livro');
+      }
+      
+      // Remover o livro
+      await remove(bookRef);
+      
+      // Remover do índice de usuário
+      const userBookRef = ref(database, `userBooks/${userId}/${bookId}`);
+      await remove(userBookRef);
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao deletar livro:', error);
+      throw error;
     }
   }
 };

@@ -8,139 +8,21 @@ import {
   Alert,
   Dimensions,
   TextInput,
-  ScrollView
+  ScrollView,
+  ActivityIndicator
 } from 'react-native';
+import { booksService } from '../services/firebase';
 
 const { width } = Dimensions.get('window');
-
-const booksData = [
-  {
-    id: '1',
-    title: 'Dom Casmurro',
-    author: 'Machado de Assis',
-    price: 'R$ 39,90',
-    image: 'https://m.media-amazon.com/images/I/51X8kQ4MqaL._SY445_SX342_.jpg',
-    description: 'O clássico da literatura brasileira'
-  },
-  {
-    id: '2',
-    title: 'O Alquimista',
-    author: 'Paulo Coelho',
-    price: 'R$ 34,90',
-    image: 'https://m.media-amazon.com/images/I/51zLZ6wDlwL._SY445_SX342_.jpg',
-    description: 'Um livro sobre sonhos e busca'
-  },
-  {
-    id: '3',
-    title: '1984',
-    author: 'George Orwell',
-    price: 'R$ 45,90',
-    image: 'https://m.media-amazon.com/images/I/41a5Lk6gwnL._SY445_SX342_.jpg',
-    description: 'Um romance distópico'
-  },
-  {
-    id: '4',
-    title: 'O Pequeno Príncipe',
-    author: 'Antoine de Saint-Exupéry',
-    price: 'R$ 29,90',
-    image: 'https://m.media-amazon.com/images/I/51k5Z6qCJpL._SY445_SX342_.jpg',
-    description: 'Uma história encantadora'
-  },
-  {
-    id: '5',
-    title: 'A Revolução dos Bichos',
-    author: 'George Orwell',
-    price: 'R$ 32,90',
-    image: 'https://m.media-amazon.com/images/I/51qN4X5UKcL._SY445_SX342_.jpg',
-    description: 'Uma fábula satírica'
-  },
-  {
-    id: '6',
-    title: 'O Hobbit',
-    author: 'J.R.R. Tolkien',
-    price: 'R$ 49,90',
-    image: 'https://m.media-amazon.com/images/I/51wv3C5L-XL._SY445_SX342_.jpg',
-    description: 'Aventura na Terra Média'
-  },
-  {
-    id: '7',
-    title: 'Cem Anos de Solidão',
-    author: 'Gabriel García Márquez',
-    price: 'R$ 59,90',
-    image: 'https://m.media-amazon.com/images/I/51qK4n5R8fL._SY445_SX342_.jpg',
-    description: 'A obra-prima do realismo fantástico'
-  },
-  {
-    id: '8',
-    title: 'O Senhor dos Anéis',
-    author: 'J.R.R. Tolkien',
-    price: 'R$ 89,90',
-    image: 'https://m.media-amazon.com/images/I/51CvX5bYwvL._SY445_SX342_.jpg',
-    description: 'A épica jornada para destruir o Um Anel'
-  },
-  {
-    id: '9',
-    title: 'A Menina que Roubava Livros',
-    author: 'Markus Zusak',
-    price: 'R$ 49,90',
-    image: 'https://m.media-amazon.com/images/I/51x5RgZ4EwL._SY445_SX342_.jpg',
-    description: 'A emocionante história na Alemanha nazista'
-  },
-  {
-    id: '10',
-    title: 'O Diário de Anne Frank',
-    author: 'Anne Frank',
-    price: 'R$ 39,90',
-    image: 'https://m.media-amazon.com/images/I/51X8kQ4MqaL._SY445_SX342_.jpg',
-    description: 'O relato comovente de uma jovem judia'
-  },
-  {
-    id: '11',
-    title: 'A Culpa é das Estrelas',
-    author: 'John Green',
-    price: 'R$ 39,90',
-    image: 'https://m.media-amazon.com/images/I/51zLZ6wDlwL._SY445_SX342_.jpg',
-    description: 'Um amor que desafia o destino'
-  },
-  {
-    id: '12',
-    title: 'O Código Da Vinci',
-    author: 'Dan Brown',
-    price: 'R$ 49,90',
-    image: 'https://m.media-amazon.com/images/I/41a5Lk6gwnL._SY445_SX342_.jpg',
-    description: 'Um mistério envolvente e intrigante'
-  },
-  {
-    id: '13',
-    title: 'Harry Potter e a Pedra Filosofal',
-    author: 'J.K. Rowling',
-    price: 'R$ 59,90',
-    image: 'https://m.media-amazon.com/images/I/51k5Z6qCJpL._SY445_SX342_.jpg',
-    description: 'O início da jornada do jovem bruxo'
-  },
-  {
-    id: '14',
-    title: 'Percy Jackson e o Ladrão de Raios',
-    author: 'Rick Riordan',
-    price: 'R$ 44,90',
-    image: 'https://m.media-amazon.com/images/I/51qN4X5UKcL._SY445_SX342_.jpg',
-    description: 'Aventura com a mitologia grega'
-  },
-  {
-    id: '15',
-    title: 'O Guia do Mochileiro das Galáxias',
-    author: 'Douglas Adams',
-    price: 'R$ 42,90',
-    image: 'https://m.media-amazon.com/images/I/51wv3C5L-XL._SY445_SX342_.jpg',
-    description: 'Uma viagem intergaláctica hilária'
-  }
-];
+const isTablet = width >= 768;
 
 export default function ShopScreen({ onCartUpdate }) {
   const [cart, setCart] = useState([]);
   const [numColumns, setNumColumns] = useState(2);
   const [searchText, setSearchText] = useState('');
-  const [filteredBooks, setFilteredBooks] = useState(booksData);
+  const [books, setBooks] = useState([]);
+  const [filteredBooks, setFilteredBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     updateColumns();
@@ -149,14 +31,32 @@ export default function ShopScreen({ onCartUpdate }) {
   }, []);
 
   useEffect(() => {
+    loadBooks();
+  }, []);
+
+  useEffect(() => {
     filterBooks();
-  }, [searchText]);
+  }, [searchText, books]);
 
   useEffect(() => {
     if (onCartUpdate) {
       onCartUpdate(cart.length);
     }
   }, [cart, onCartUpdate]);
+
+  const loadBooks = async () => {
+    try {
+      setLoading(true);
+      const allBooks = await booksService.getAllBooks();
+      setBooks(allBooks);
+      setFilteredBooks(allBooks);
+    } catch (error) {
+      console.error('Erro ao carregar livros:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os livros');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateColumns = () => {
     const screenWidth = Dimensions.get('window').width;
@@ -171,9 +71,9 @@ export default function ShopScreen({ onCartUpdate }) {
 
   const filterBooks = () => {
     if (searchText.trim() === '') {
-      setFilteredBooks(booksData);
+      setFilteredBooks(books);
     } else {
-      const filtered = booksData.filter(book => 
+      const filtered = books.filter(book => 
         book.title.toLowerCase().includes(searchText.toLowerCase()) ||
         book.author.toLowerCase().includes(searchText.toLowerCase()) ||
         book.description.toLowerCase().includes(searchText.toLowerCase())
@@ -191,11 +91,18 @@ export default function ShopScreen({ onCartUpdate }) {
     setSearchText('');
   };
 
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
+  };
+
   const renderBookCard = (item) => {
     return (
       <View style={styles.bookCard}>
         <Image 
-          source={{ uri: item.image }} 
+          source={{ uri: item.image || 'https://via.placeholder.com/150x200?text=Sem+Imagem' }} 
           style={styles.bookImage}
           defaultSource={require('../assets/images/bookstore-logo.png')}
         />
@@ -215,7 +122,7 @@ export default function ShopScreen({ onCartUpdate }) {
           
           <View style={styles.priceContainer}>
             <Text style={styles.bookPrice}>
-              {item.price}
+              {formatPrice(item.price)}
             </Text>
             <TouchableOpacity 
               style={styles.buyButton}
@@ -268,6 +175,15 @@ export default function ShopScreen({ onCartUpdate }) {
     return rows;
   };
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6e0c0c" />
+        <Text style={styles.loadingText}>Carregando livros...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
@@ -309,8 +225,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#2e0000',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2e0000',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#fff',
+    fontSize: 16,
+  },
   searchContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: isTablet ? 24 : 16,
     paddingTop: 16,
     paddingBottom: 8,
   },
@@ -322,22 +249,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
   },
-  searchIcon: {
-    fontSize: 18,
-    marginRight: 8,
-    color: '#666',
-  },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: isTablet ? 16 : 14,
     color: '#333',
     paddingVertical: 8,
   },
@@ -351,11 +270,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   scrollContent: {
-    padding: 16,
+    padding: isTablet ? 24 : 16,
   },
   row: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   bookCardWrapper: {
     flex: 1,
@@ -371,10 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
@@ -432,10 +348,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
   },
   emptyText: {
     fontSize: 18,

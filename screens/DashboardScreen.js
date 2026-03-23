@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import ShopScreen from './ShopScreen';
 import ProfileScreen from './ProfileScreen';
+import BookManagementScreen from './BookManagementScreen';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
@@ -25,6 +26,8 @@ export default function DashboardScreen() {
   const renderContent = () => {
     if (activeTab === 'Loja') {
       return <ShopScreen onCartUpdate={updateCartCount} />;
+    } else if (activeTab === 'Meus Livros') {
+      return <BookManagementScreen />;
     } else {
       return <ProfileScreen />;
     }
@@ -45,6 +48,16 @@ export default function DashboardScreen() {
             >
               <Text style={[styles.tabText, activeTab === 'Loja' && styles.activeTabText]}>
                 Loja
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'Meus Livros' && styles.activeTab]}
+              onPress={() => setActiveTab('Meus Livros')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabText, activeTab === 'Meus Livros' && styles.activeTabText]}>
+                Meus Livros
               </Text>
             </TouchableOpacity>
             
