@@ -3,25 +3,25 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   ScrollView,
-  Alert,
-  Modal,
+  TouchableOpacity,
   Dimensions,
   ActivityIndicator,
-  RefreshControl
+  Modal,
+  TextInput,
+  Alert
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { booksService } from '../services/firebase';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
+const isSmallPhone = width < 380;
 
 export default function BookManagementScreen() {
+  const [user, setUser] = useState(null);
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
   const [formData, setFormData] = useState({
@@ -30,20 +30,18 @@ export default function BookManagementScreen() {
     description: '',
     price: ''
   });
-  const [formErrors, setFormErrors] = useState({});
-  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    loadUserAndBooks();
+    loadUserData();
   }, []);
 
-  const loadUserAndBooks = async () => {
+  const loadUserData = async () => {
     try {
       const userData = await AsyncStorage.getItem('userData');
       if (userData) {
-        const user = JSON.parse(userData);
-        setCurrentUser(user);
-        await loadBooks(user.id);
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        await loadBooks(parsed.id);
       } else {
         Alert.alert('Erro', 'Usuário não encontrado. Faça login novamente.');
       }
@@ -65,84 +63,34 @@ export default function BookManagementScreen() {
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    if (currentUser) {
-      await loadBooks(currentUser.id);
-    }
-    setRefreshing(false);
-  };
-
-  const validateForm = () => {
-    const errors = {};
-    
-    if (!formData.title.trim()) {
-      errors.title = 'Título é obrigatório';
-    } else if (formData.title.length < 2) {
-      errors.title = 'Título deve ter pelo menos 2 caracteres';
-    } else if (formData.title.length > 100) {
-      errors.title = 'Título deve ter no máximo 100 caracteres';
-    }
-    
-    if (!formData.author.trim()) {
-      errors.author = 'Autor é obrigatório';
-    } else if (formData.author.length < 2) {
-      errors.author = 'Autor deve ter pelo menos 2 caracteres';
-    } else if (formData.author.length > 100) {
-      errors.author = 'Autor deve ter no máximo 100 caracteres';
-    }
-    
-    if (!formData.description.trim()) {
-      errors.description = 'Descrição é obrigatória';
-    } else if (formData.description.length < 10) {
-      errors.description = 'Descrição deve ter pelo menos 10 caracteres';
-    } else if (formData.description.length > 500) {
-      errors.description = 'Descrição deve ter no máximo 500 caracteres';
-    }
-    
-    if (!formData.price) {
-      errors.price = 'Preço é obrigatório';
-    } else {
-      const price = parseFloat(formData.price);
-      if (isNaN(price) || price <= 0) {
-        errors.price = 'Preço deve ser um número positivo';
-      } else if (price > 10000) {
-        errors.price = 'Preço não pode ser maior que R$ 10.000';
-      }
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
   const handleSaveBook = async () => {
-    if (!validateForm()) {
+    if (!formData.title.trim() || !formData.author.trim() || !formData.description.trim() || !formData.price) {
+      Alert.alert('Erro', 'Preencha todos os campos');
       return;
     }
-    
+
     setLoading(true);
-    
     try {
       const bookData = {
         title: formData.title.trim(),
         author: formData.author.trim(),
         description: formData.description.trim(),
-        price: formData.price
+        price: parseFloat(formData.price)
       };
-      
+
       if (editingBook) {
-        await booksService.updateBook(editingBook.id, bookData, currentUser.id);
-        Alert.alert('Sucesso', 'Livro atualizado com sucesso!');
+        await booksService.updateBook(editingBook.id, bookData, user.id);
+        Alert.alert('Sucesso', 'Livro atualizado!');
       } else {
-        await booksService.createBook(bookData, currentUser.id);
-        Alert.alert('Sucesso', 'Livro cadastrado com sucesso!');
+        await booksService.createBook(bookData, user.id);
+        Alert.alert('Sucesso', 'Livro cadastrado!');
       }
-      
-      await loadBooks(currentUser.id);
+
+      await loadBooks(user.id);
       closeModal();
     } catch (error) {
       console.error('Erro ao salvar livro:', error);
-      Alert.alert('Erro', error.message || 'Erro ao salvar livro');
+      Alert.alert('Erro', error.message || 'Erro ao salvar');
     } finally {
       setLoading(false);
     }
@@ -159,84 +107,31 @@ export default function BookManagementScreen() {
     setModalVisible(true);
   };
 
-  const handleDeleteBook = (book) => {
-    Alert.alert(
-      'Confirmar exclusão',
-      `Tem certeza que deseja excluir o livro "${book.title}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await booksService.deleteBook(book.id, currentUser.id);
-              Alert.alert('Sucesso', 'Livro excluído com sucesso!');
-              await loadBooks(currentUser.id);
-            } catch (error) {
-              console.error('Erro ao excluir livro:', error);
-              Alert.alert('Erro', error.message || 'Erro ao excluir livro');
-            }
-          }
-        }
-      ]
-    );
+  const handleDeleteBook = async (book) => {
+    try {
+      await booksService.deleteBook(book.id, user.id);
+      Alert.alert('Sucesso', 'Livro excluído!');
+      await loadBooks(user.id);
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      Alert.alert('Erro', error.message || 'Erro ao excluir');
+    }
   };
 
   const closeModal = () => {
     setModalVisible(false);
     setEditingBook(null);
-    setFormData({
-      title: '',
-      author: '',
-      description: '',
-      price: ''
-    });
-    setFormErrors({});
+    setFormData({ title: '', author: '', description: '', price: '' });
   };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(price);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
   };
 
-  const renderBookCard = (book) => {
-    return (
-      <View key={book.id} style={styles.bookCard}>
-        <View style={styles.bookInfo}>
-          <Text style={styles.bookTitle}>{book.title}</Text>
-          <Text style={styles.bookAuthor}>Autor: {book.author}</Text>
-          <Text style={styles.bookDescription} numberOfLines={3}>
-            {book.description}
-          </Text>
-          <Text style={styles.bookPrice}>{formatPrice(book.price)}</Text>
-          <Text style={styles.bookDate}>
-            Cadastrado em: {new Date(book.createdAt).toLocaleDateString('pt-BR')}
-          </Text>
-        </View>
-        
-        <View style={styles.bookActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.editButton]}
-            onPress={() => handleEditBook(book)}
-          >
-            <Text style={styles.actionButtonText}>Editar</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={() => handleDeleteBook(book)}
-          >
-            <Text style={styles.actionButtonText}>Excluir</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
+  const getHorizontalMargin = () => (isSmallPhone ? 12 : 20);
+  const getVerticalMargin = () => (isSmallPhone ? 15 : 20);
 
-  if (loading && !refreshing) {
+  if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#6e0c0c" />
@@ -246,154 +141,102 @@ export default function BookManagementScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Meus Livros</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setModalVisible(true)}
-        >
-          <Text style={styles.addButtonText}>+ Novo Livro</Text>
-        </TouchableOpacity>
-      </View>
-      
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+    <ScrollView
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          paddingHorizontal: getHorizontalMargin(),
+          paddingVertical: getVerticalMargin(),
         }
-      >
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.contentWrapper}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Meus Livros</Text>
+          <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+            <Text style={styles.addButtonText}>+ Novo Livro</Text>
+          </TouchableOpacity>
+        </View>
+
         {books.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>Nenhum livro cadastrado</Text>
-            <Text style={styles.emptySubText}>
-              Clique em "+ Novo Livro" para começar
-            </Text>
+            <Text style={styles.emptySubText}>Clique em "+ Novo Livro" para começar</Text>
           </View>
         ) : (
-          books.map(renderBookCard)
+          books.map(book => (
+            <View key={book.id} style={styles.card}>
+              <View style={styles.bookInfo}>
+                <Text style={styles.bookTitle}>{book.title}</Text>
+                <Text style={styles.bookAuthor}>Autor: {book.author}</Text>
+                <Text style={styles.bookDescription} numberOfLines={2}>{book.description}</Text>
+                <Text style={styles.bookPrice}>{formatPrice(book.price)}</Text>
+              </View>
+              <View style={styles.bookActions}>
+                <TouchableOpacity style={[styles.actionButton, styles.editButton]} onPress={() => handleEditBook(book)}>
+                  <Text style={styles.actionButtonText}>Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={() => handleDeleteBook(book)}>
+                  <Text style={styles.actionButtonText}>Excluir</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
         )}
-      </ScrollView>
-      
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={closeModal}
-      >
+      </View>
+
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editingBook ? 'Editar Livro' : 'Novo Livro'}
-            </Text>
-            
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Título *</Text>
-                <TextInput
-                  style={[styles.input, formErrors.title && styles.inputError]}
-                  placeholder="Digite o título do livro"
-                  placeholderTextColor="#999"
-                  value={formData.title}
-                  onChangeText={(text) => {
-                    setFormData({...formData, title: text});
-                    if (formErrors.title) setFormErrors({...formErrors, title: null});
-                  }}
-                />
-                {formErrors.title && (
-                  <Text style={styles.errorText}>{formErrors.title}</Text>
-                )}
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Autor *</Text>
-                <TextInput
-                  style={[styles.input, formErrors.author && styles.inputError]}
-                  placeholder="Digite o nome do autor"
-                  placeholderTextColor="#999"
-                  value={formData.author}
-                  onChangeText={(text) => {
-                    setFormData({...formData, author: text});
-                    if (formErrors.author) setFormErrors({...formErrors, author: null});
-                  }}
-                />
-                {formErrors.author && (
-                  <Text style={styles.errorText}>{formErrors.author}</Text>
-                )}
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Descrição *</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea, formErrors.description && styles.inputError]}
-                  placeholder="Digite a descrição do livro"
-                  placeholderTextColor="#999"
-                  multiline
-                  numberOfLines={4}
-                  value={formData.description}
-                  onChangeText={(text) => {
-                    setFormData({...formData, description: text});
-                    if (formErrors.description) setFormErrors({...formErrors, description: null});
-                  }}
-                />
-                {formErrors.description && (
-                  <Text style={styles.errorText}>{formErrors.description}</Text>
-                )}
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Preço *</Text>
-                <TextInput
-                  style={[styles.input, formErrors.price && styles.inputError]}
-                  placeholder="Digite o preço (ex: 39.90)"
-                  placeholderTextColor="#999"
-                  keyboardType="decimal-pad"
-                  value={formData.price}
-                  onChangeText={(text) => {
-                    setFormData({...formData, price: text});
-                    if (formErrors.price) setFormErrors({...formErrors, price: null});
-                  }}
-                />
-                {formErrors.price && (
-                  <Text style={styles.errorText}>{formErrors.price}</Text>
-                )}
-              </View>
-            </ScrollView>
-            
+            <Text style={styles.modalTitle}>{editingBook ? 'Editar Livro' : 'Novo Livro'}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Título"
+              placeholderTextColor="#999"
+              value={formData.title}
+              onChangeText={text => setFormData({ ...formData, title: text })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Autor"
+              placeholderTextColor="#999"
+              value={formData.author}
+              onChangeText={text => setFormData({ ...formData, author: text })}
+            />
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Descrição"
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={3}
+              value={formData.description}
+              onChangeText={text => setFormData({ ...formData, description: text })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Preço (ex: 39.90)"
+              placeholderTextColor="#999"
+              keyboardType="decimal-pad"
+              value={formData.price}
+              onChangeText={text => setFormData({ ...formData, price: text })}
+            />
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={closeModal}
-              >
+              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={closeModal}>
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={handleSaveBook}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.saveButtonText}>
-                    {editingBook ? 'Atualizar' : 'Salvar'}
-                  </Text>
-                )}
+              <TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSaveBook}>
+                <Text style={styles.saveButtonText}>Salvar</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#2e0000',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -401,19 +244,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#2e0000',
   },
   loadingText: {
-    marginTop: 10,
     color: '#fff',
     fontSize: 16,
+    marginTop: 10,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    backgroundColor: '#2e0000',
+  },
+  contentWrapper: {
+    maxWidth: 500,
+    width: '100%',
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: isTablet ? 24 : 16,
-    paddingVertical: 16,
-    backgroundColor: '#1a0000',
-    borderBottomWidth: 1,
-    borderBottomColor: '#6e0c0c',
+    marginBottom: 20,
   },
   headerTitle: {
     fontSize: isTablet ? 24 : 20,
@@ -428,17 +276,12 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 14,
     fontWeight: 'bold',
   },
-  scrollContent: {
-    padding: isTablet ? 24 : 16,
-    paddingTop: isTablet ? 20 : 12,
-  },
-  bookCard: {
+  card: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    marginBottom: isTablet ? 20 : 16,
+    marginBottom: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -447,34 +290,28 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   bookInfo: {
-    padding: isTablet ? 20 : 16,
+    padding: 16,
   },
   bookTitle: {
-    fontSize: isTablet ? 20 : 18,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#2e0000',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   bookAuthor: {
-    fontSize: isTablet ? 16 : 14,
+    fontSize: 14,
     color: '#666',
     marginBottom: 8,
   },
   bookDescription: {
-    fontSize: isTablet ? 15 : 14,
+    fontSize: 13,
     color: '#888',
-    lineHeight: isTablet ? 22 : 20,
-    marginBottom: 12,
-  },
-  bookPrice: {
-    fontSize: isTablet ? 20 : 18,
-    fontWeight: 'bold',
-    color: '#6e0c0c',
     marginBottom: 8,
   },
-  bookDate: {
-    fontSize: isTablet ? 13 : 12,
-    color: '#999',
+  bookPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6e0c0c',
   },
   bookActions: {
     flexDirection: 'row',
@@ -483,39 +320,37 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   editButton: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f5f5f5',
   },
   deleteButton: {
     backgroundColor: '#ffe5e5',
   },
   actionButtonText: {
-    fontSize: isTablet ? 15 : 14,
+    fontSize: 14,
     fontWeight: '600',
     color: '#2e0000',
   },
   emptyContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
+    marginTop: 50,
   },
   emptyText: {
-    fontSize: isTablet ? 20 : 18,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
   },
   emptySubText: {
-    fontSize: isTablet ? 16 : 14,
+    fontSize: 14,
     color: '#999',
-    textAlign: 'center',
+    marginTop: 8,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -524,57 +359,38 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     width: isTablet ? '80%' : '90%',
-    maxHeight: '80%',
   },
   modalTitle: {
-    fontSize: isTablet ? 26 : 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#2e0000',
     marginBottom: 20,
     textAlign: 'center',
   },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: isTablet ? 16 : 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
   input: {
     backgroundColor: '#f5f5f5',
     borderRadius: 10,
-    padding: isTablet ? 14 : 12,
-    fontSize: isTablet ? 17 : 16,
-    color: '#333',
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
   textArea: {
-    minHeight: 120,
+    minHeight: 80,
     textAlignVertical: 'top',
-  },
-  inputError: {
-    borderColor: '#ff6b6b',
-    borderWidth: 2,
-  },
-  errorText: {
-    color: '#ff6b6b',
-    fontSize: 12,
-    marginTop: 4,
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 24,
-    gap: 12,
+    marginTop: 20,
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
+    marginHorizontal: 6,
   },
   cancelButton: {
     backgroundColor: '#f0f0f0',
@@ -584,12 +400,10 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: '#666',
-    fontSize: isTablet ? 17 : 16,
     fontWeight: '600',
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: isTablet ? 17 : 16,
     fontWeight: 'bold',
   },
 });
