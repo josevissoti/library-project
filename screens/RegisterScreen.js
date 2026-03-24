@@ -109,21 +109,18 @@ export default function RegisterScreen({ navigation }) {
       newErrors.name = 'Nome deve ter no máximo 100 caracteres';
     }
     
-    // Validação do telefone
     if (!phone) {
       newErrors.phone = 'Telefone é obrigatório';
     } else if (!validatePhone(phone)) {
       newErrors.phone = 'Telefone inválido (DDD + 8 ou 9 dígitos)';
     }
     
-    // Validação avançada de email
     if (!email) {
       newErrors.email = 'E-mail é obrigatório';
     } else if (!validateEmail(email)) {
       newErrors.email = 'E-mail inválido (exemplo: nome@dominio.com)';
     }
     
-    // Validação avançada de senha
     if (!password) {
       newErrors.password = 'Senha é obrigatória';
     } else if (password.length < 8) {
@@ -173,7 +170,7 @@ export default function RegisterScreen({ navigation }) {
             hasNumber: false,
             hasSymbol: false
           });
-          navigation.navigate('Login');
+          navigation.replace('Login');
         }, 2000);
         
       } catch (error) {

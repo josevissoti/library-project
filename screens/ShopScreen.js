@@ -9,14 +9,15 @@ import {
   Dimensions,
   TextInput,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  StatusBar
 } from 'react-native';
 import { booksService } from '../services/firebase';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
 
-export default function ShopScreen({ onCartUpdate }) {
+export default function ShopScreen() {
   const [cart, setCart] = useState([]);
   const [numColumns, setNumColumns] = useState(2);
   const [searchText, setSearchText] = useState('');
@@ -37,12 +38,6 @@ export default function ShopScreen({ onCartUpdate }) {
   useEffect(() => {
     filterBooks();
   }, [searchText, books]);
-
-  useEffect(() => {
-    if (onCartUpdate) {
-      onCartUpdate(cart.length);
-    }
-  }, [cart, onCartUpdate]);
 
   const loadBooks = async () => {
     try {
@@ -186,6 +181,23 @@ export default function ShopScreen({ onCartUpdate }) {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#2e0000" />
+      
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>BookStore</Text>
+        <TouchableOpacity
+          style={styles.cartButton}
+          onPress={() => Alert.alert('Carrinho', `${cart.length} item(ns) no carrinho`)}
+        >
+          <Text style={styles.cartIcon}>🛒</Text>
+          {cart.length > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cart.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
           <TextInput
@@ -235,6 +247,47 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: '#fff',
     fontSize: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: '#1a0000',
+    borderBottomWidth: 1,
+    borderBottomColor: '#6e0c0c',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  cartButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  cartIcon: {
+    fontSize: 24,
+    color: '#fff',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#ff4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   searchContainer: {
     paddingHorizontal: isTablet ? 24 : 16,

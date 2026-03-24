@@ -169,7 +169,6 @@ export default function BookManagementScreen() {
           text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
-            // Usar um estado de loading local para não bloquear toda a tela
             try {
               await booksService.deleteBook(book.id, currentUser.id);
               Alert.alert('Sucesso', 'Livro excluído com sucesso!');
@@ -276,7 +275,6 @@ export default function BookManagementScreen() {
         )}
       </ScrollView>
       
-      {/* Modal de Cadastro/Edição */}
       <Modal
         animationType="slide"
         transparent={true}

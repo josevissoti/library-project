@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -9,54 +9,31 @@ import {
   Dimensions,
   ActivityIndicator
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import { AuthContext } from '../context/AuthContext';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
 const isSmallPhone = width < 380;
 
 export default function ProfileScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
+  const { user, logout } = useContext(AuthContext);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
-    try {
-      const user = await AsyncStorage.getItem('userData');
-      if (user) {
-        setUserData(JSON.parse(user));
-      } else {
-        navigation.replace('Home');
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
+    if (user) {
+      setUserData(user);
       setLoading(false);
+    } else {
+      router.replace('/');
     }
-  };
+  }, [user]);
 
   const handleLogout = async () => {
-    try {
-      await AsyncStorage.multiRemove(['userToken', 'userData']);
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        })
-      );
-    } catch (error) {
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        })
-      );
-    }
+    await logout();
+    router.replace('/');
   };
 
   if (loading) {
@@ -207,6 +184,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    backgroundColor: '#2e0000',
   },
   contentWrapper: {
     maxWidth: 500,

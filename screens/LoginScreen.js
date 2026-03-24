@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,13 @@ import {
   Dimensions
 } from 'react-native';
 import { authService } from '../services/firebase';
+import { AuthContext } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
 
 export default function LoginScreen({ navigation }) {
+  const { login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,6 @@ export default function LoginScreen({ navigation }) {
     }, 3000);
   };
 
-  // Validação de email
   const validateEmail = (email) => {
     const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return regex.test(email);
@@ -54,24 +55,19 @@ export default function LoginScreen({ navigation }) {
 
     try {
       const user = await authService.loginUser(email, password);
+      login(user);
       showMessage(`Bem-vindo(a), ${user.name}!`, 'success');
-      
+
       setTimeout(() => {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Dashboard' }],
-        });
+        navigation.popToTop();
       }, 1500);
-      
     } catch (error) {
       let errorMessage = 'Falha ao realizar login. Verifique suas credenciais.';
-      
       if (error.message.includes('E-mail ou senha inválidos')) {
         errorMessage = 'E-mail ou senha incorretos. Tente novamente.';
       } else if (error.message.includes('usuário não encontrado')) {
         errorMessage = 'Usuário não encontrado. Verifique seu e-mail.';
       }
-      
       showMessage(errorMessage, 'error');
     } finally {
       setLoading(false);

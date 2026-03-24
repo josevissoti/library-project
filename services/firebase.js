@@ -172,7 +172,6 @@ export const authService = {
 };
 
 export const booksService = {
-  // Criar um novo livro
   async createBook(bookData, userId) {
     try {
       const booksRef = ref(database, `books`);
@@ -191,7 +190,6 @@ export const booksService = {
       
       await set(newBookRef, book);
       
-      // Criar índice por usuário
       const userBooksRef = ref(database, `userBooks/${userId}/${newBookRef.key}`);
       await set(userBooksRef, true);
       
@@ -202,7 +200,6 @@ export const booksService = {
     }
   },
   
-  // Buscar todos os livros (para a loja)
   async getAllBooks() {
     try {
       const booksRef = ref(database, `books`);
@@ -213,7 +210,6 @@ export const booksService = {
       }
       
       const books = Object.values(snapshot.val());
-      // Ordenar por data de criação (mais recente primeiro)
       return books.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     } catch (error) {
       console.error('Erro ao buscar todos os livros:', error);
@@ -221,7 +217,6 @@ export const booksService = {
     }
   },
   
-  // Buscar todos os livros de um usuário específico
   async getUserBooks(userId) {
     try {
       const userBooksRef = ref(database, `userBooks/${userId}`);
@@ -250,7 +245,6 @@ export const booksService = {
     }
   },
   
-  // Buscar um livro específico
   async getBook(bookId) {
     try {
       const bookRef = ref(database, `books/${bookId}`);
@@ -262,7 +256,6 @@ export const booksService = {
     }
   },
   
-  // Atualizar um livro
   async updateBook(bookId, bookData, userId) {
     try {
       const bookRef = ref(database, `books/${bookId}`);
@@ -295,7 +288,6 @@ export const booksService = {
     }
   },
   
-  // Deletar um livro
   async deleteBook(bookId, userId) {
     try {
       const bookRef = ref(database, `books/${bookId}`);
@@ -311,10 +303,8 @@ export const booksService = {
         throw new Error('Você não tem permissão para deletar este livro');
       }
       
-      // Remover o livro
       await remove(bookRef);
       
-      // Remover do índice de usuário
       const userBookRef = ref(database, `userBooks/${userId}/${bookId}`);
       await remove(userBookRef);
       
