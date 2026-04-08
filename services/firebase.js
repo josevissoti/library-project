@@ -1,5 +1,19 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, get, push, update, remove } from "firebase/database";
+import { 
+  getDatabase, 
+  ref, 
+  set, 
+  get, 
+  push, 
+  update, 
+  remove 
+} from "firebase/database";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut 
+} from "firebase/auth";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
@@ -14,6 +28,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const auth = getAuth(app);
 
 const sanitizeEmail = (email) => {
   return email.toLowerCase().replace(/[.#$/[\]]/g, '_');
@@ -25,46 +40,40 @@ export const authService = {
       const { name, email, phone, password } = userData;
       console.log('Tentando registrar usuário:', email);
 
-      const emailExists = await this.checkEmailExists(email);
-      if (emailExists) {
-        throw new Error('Este e-mail já está cadastrado');
-      }
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+      console.log('Usuário criado no Authentication com UID:', uid);
 
-      const phoneExists = await this.checkPhoneExists(phone);
-      if (phoneExists) {
-        throw new Error('Este telefone já está cadastrado');
-      }
-      
-      const userId = Date.now().toString();
-
-      const userRef = ref(database, `users/${userId}`);
+      const userRef = ref(database, `users/${uid}`);
       await set(userRef, {
-        id: userId,
+        id: uid,
         name,
         email: email.toLowerCase(),
         phone,
-        password,
         createdAt: new Date().toISOString()
       });
 
       const emailKey = sanitizeEmail(email);
       const emailRef = ref(database, `emailIndex/${emailKey}`);
-      await set(emailRef, userId);
+      await set(emailRef, uid);
 
       const phoneKey = phone.replace(/[\s\(\)-]/g, '');
       const phoneRef = ref(database, `phoneIndex/${phoneKey}`);
-      await set(phoneRef, userId);
+      await set(phoneRef, uid);
       
-      console.log('Usuário registrado com sucesso:', userId);
+      console.log('Usuário registrado com sucesso:', uid);
       
       return {
-        id: userId,
+        id: uid,
         name,
         email: email.toLowerCase(),
         phone
       };
     } catch (error) {
       console.error('Erro ao registrar usuário:', error);
+      if (error.code === 'auth/email-already-in-use') {
+        throw new Error('Este e-mail já está cadastrado.');
+      }
       throw error;
     }
   },
@@ -73,23 +82,18 @@ export const authService = {
     try {
       console.log('Tentando login:', email);
 
-      const userId = await this.getUserIdByEmail(email);
-      if (!userId) {
-        throw new Error('E-mail ou senha inválidos');
-      }
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+      console.log('Usuário autenticado com UID:', uid);
 
-      const userRef = ref(database, `users/${userId}`);
+      const userRef = ref(database, `users/${uid}`);
       const snapshot = await get(userRef);
       
       if (!snapshot.exists()) {
-        throw new Error('Usuário não encontrado');
+        throw new Error('Dados do usuário não encontrados no banco de dados.');
       }
       
       const userData = snapshot.val();
-      
-      if (userData.password !== password) {
-        throw new Error('E-mail ou senha inválidos');
-      }
       
       const userInfo = {
         id: userData.id,
@@ -98,7 +102,7 @@ export const authService = {
         phone: userData.phone
       };
       
-      await AsyncStorage.setItem('userToken', 'token_' + Date.now());
+      await AsyncStorage.setItem('userToken', userCredential.user.accessToken);
       await AsyncStorage.setItem('userData', JSON.stringify(userInfo));
       
       console.log('Login realizado com sucesso:', userInfo.name);
@@ -106,6 +110,9 @@ export const authService = {
       return userInfo;
     } catch (error) {
       console.error('Erro ao fazer login:', error);
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        throw new Error('E-mail ou senha inválidos.');
+      }
       throw error;
     }
   },
@@ -148,6 +155,7 @@ export const authService = {
   
   async logout() {
     try {
+      await signOut(auth);
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('userData');
       console.log('Logout realizado com sucesso');
