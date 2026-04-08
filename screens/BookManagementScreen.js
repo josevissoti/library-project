@@ -24,6 +24,8 @@ export default function BookManagementScreen() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [bookToDelete, setBookToDelete] = useState(null);
   const [editingBook, setEditingBook] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -111,11 +113,19 @@ export default function BookManagementScreen() {
     setModalVisible(true);
   };
 
-  const handleDeleteBook = async (book) => {
+  const confirmDelete = (book) => {
+    setBookToDelete(book);
+    setDeleteModalVisible(true);
+  };
+
+  const handleDeleteBook = async () => {
+    if (!bookToDelete) return;
+    
     try {
-      await booksService.deleteBook(book.id, user.id);
+      await booksService.deleteBook(bookToDelete.id, user.id);
       Alert.alert('Sucesso', 'Livro excluído!');
       await loadBooks(user.id);
+      closeDeleteModal();
     } catch (error) {
       console.error('Erro ao excluir:', error);
       Alert.alert('Erro', error.message || 'Erro ao excluir');
@@ -126,6 +136,11 @@ export default function BookManagementScreen() {
     setModalVisible(false);
     setEditingBook(null);
     setFormData({ title: '', author: '', description: '', price: '', image: '' });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalVisible(false);
+    setBookToDelete(null);
   };
 
   const formatPrice = (price) => {
@@ -190,7 +205,7 @@ export default function BookManagementScreen() {
                 <TouchableOpacity style={[styles.actionButton, styles.editButton]} onPress={() => handleEditBook(book)}>
                   <Text style={styles.actionButtonText}>Editar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={() => handleDeleteBook(book)}>
+                <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={() => confirmDelete(book)}>
                   <Text style={styles.actionButtonText}>Excluir</Text>
                 </TouchableOpacity>
               </View>
@@ -199,6 +214,7 @@ export default function BookManagementScreen() {
         )}
       </View>
 
+      {/* Modal de Cadastro/Edição */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -250,6 +266,26 @@ export default function BookManagementScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSaveBook}>
                 <Text style={styles.saveButtonText}>Salvar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Modal visible={deleteModalVisible} animationType="fade" transparent onRequestClose={closeDeleteModal}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.deleteModalContent}>
+            <Text style={styles.deleteModalTitle}>Confirmar exclusão</Text>
+            <Text style={styles.deleteModalMessage}>
+              Tem certeza que deseja excluir "{bookToDelete?.title}"?
+            </Text>
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity style={[styles.deleteModalButton, styles.cancelDeleteButton]} onPress={closeDeleteModal}>
+                <Text style={styles.cancelDeleteButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.deleteModalButton, styles.confirmDeleteButton]} onPress={handleDeleteBook}>
+                <Text style={styles.confirmDeleteButtonText}>Excluir</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -441,4 +477,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-}); 
+  deleteModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: isTablet ? '70%' : '80%',
+    alignItems: 'center',
+  },
+  deleteModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2e0000',
+    marginBottom: 16,
+  },
+  deleteModalMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  deleteModalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  cancelDeleteButton: {
+    backgroundColor: '#f0f0f0',
+  },
+  confirmDeleteButton: {
+    backgroundColor: '#ff6b6b',
+  },
+  cancelDeleteButtonText: {
+    color: '#666',
+    fontWeight: '600',
+  },
+  confirmDeleteButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+});

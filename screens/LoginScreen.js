@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Dimensions
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { authService } from '../services/firebase';
 import { AuthContext } from '../context/AuthContext';
 
@@ -24,6 +25,7 @@ export default function LoginScreen({ navigation }) {
   const { login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
@@ -129,15 +131,28 @@ export default function LoginScreen({ navigation }) {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Senha</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Digite sua senha"
-                  placeholderTextColor="#999"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                  editable={!loading}
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Digite sua senha"
+                    placeholderTextColor="#999"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                    disabled={loading}
+                  >
+                    <Ionicons 
+                      name={showPassword ? 'eye' : 'eye-off'} 
+                      size={24} 
+                      color="#666" 
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <TouchableOpacity 
@@ -254,6 +269,24 @@ const styles = StyleSheet.create({
     color: '#333',
     borderWidth: 1,
     borderColor: '#e0e0e0',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: isTablet ? 18 : 16,
+    fontSize: isTablet ? 17 : 16,
+    color: '#333',
+  },
+  eyeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: isTablet ? 18 : 16,
   },
   loginButton: {
     backgroundColor: '#6e0c0c',

@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Dimensions
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { authService } from '../services/firebase';
 
 const { width } = Dimensions.get('window');
@@ -25,6 +26,8 @@ export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -45,7 +48,6 @@ export default function RegisterScreen({ navigation }) {
 
   const maskPhone = (value) => {
     const numbers = value.replace(/\D/g, '');
-    
     if (numbers.length <= 10) {
       return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
     } else {
@@ -81,7 +83,6 @@ export default function RegisterScreen({ navigation }) {
 
   const getPasswordStrengthMessage = () => {
     const { hasLength, hasUpperCase, hasNumber, hasSymbol } = passwordStrength;
-    
     if (!hasLength) return 'A senha deve ter entre 8 e 30 caracteres';
     if (!hasUpperCase) return 'A senha deve conter pelo menos uma letra maiúscula';
     if (!hasNumber) return 'A senha deve conter pelo menos um número';
@@ -92,7 +93,6 @@ export default function RegisterScreen({ navigation }) {
   const getPasswordStrengthColor = () => {
     const { hasLength, hasUpperCase, hasNumber, hasSymbol } = passwordStrength;
     const allValid = hasLength && hasUpperCase && hasNumber && hasSymbol;
-    
     if (allValid) return '#4caf50';
     if (hasLength || hasUpperCase || hasNumber || hasSymbol) return '#ff9800';
     return '#f44336';
@@ -175,13 +175,11 @@ export default function RegisterScreen({ navigation }) {
         
       } catch (error) {
         let errorMessage = 'Falha ao realizar cadastro. Tente novamente.';
-        
         if (error.message.includes('e-mail já está cadastrado')) {
           errorMessage = 'Este e-mail já está cadastrado. Use outro e-mail ou faça login.';
         } else if (error.message.includes('telefone já está cadastrado')) {
           errorMessage = 'Este telefone já está cadastrado. Use outro número.';
         }
-        
         showMessage(errorMessage, 'error');
         console.error('Erro no cadastro:', error);
       } finally {
@@ -297,15 +295,28 @@ export default function RegisterScreen({ navigation }) {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Senha</Text>
-                <TextInput
-                  style={[styles.input, errors.password ? styles.inputError : null]}
-                  placeholder="Insira sua senha"
-                  placeholderTextColor="#999"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={handlePasswordChange}
-                  editable={!loading}
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.passwordInput, errors.password ? styles.inputError : null]}
+                    placeholder="Insira sua senha"
+                    placeholderTextColor="#999"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={handlePasswordChange}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                    disabled={loading}
+                  >
+                    <Ionicons 
+                      name={showPassword ? 'eye' : 'eye-off'} 
+                      size={24} 
+                      color="#666" 
+                    />
+                  </TouchableOpacity>
+                </View>
                 {password.length > 0 && (
                   <View style={styles.passwordStrengthContainer}>
                     <Text style={[styles.passwordStrengthText, { color: getPasswordStrengthColor() }]}>
@@ -329,19 +340,32 @@ export default function RegisterScreen({ navigation }) {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Confirmar senha</Text>
-                <TextInput
-                  style={[styles.input, errors.confirmPassword ? styles.inputError : null]}
-                  placeholder="Confirme sua senha"
-                  placeholderTextColor="#999"
-                  secureTextEntry
-                  value={confirmPassword}
-                  onChangeText={(text) => {
-                    setConfirmPassword(text);
-                    if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
-                    if (message.text) setMessage({ text: '', type: '' });
-                  }}
-                  editable={!loading}
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.passwordInput, errors.confirmPassword ? styles.inputError : null]}
+                    placeholder="Confirme sua senha"
+                    placeholderTextColor="#999"
+                    secureTextEntry={!showConfirmPassword}
+                    value={confirmPassword}
+                    onChangeText={(text) => {
+                      setConfirmPassword(text);
+                      if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
+                      if (message.text) setMessage({ text: '', type: '' });
+                    }}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeButton}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={loading}
+                  >
+                    <Ionicons 
+                      name={showConfirmPassword ? 'eye' : 'eye-off'} 
+                      size={24} 
+                      color="#666" 
+                    />
+                  </TouchableOpacity>
+                </View>
                 {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
               </View>
 
@@ -459,6 +483,24 @@ const styles = StyleSheet.create({
     color: '#333',
     borderWidth: 1,
     borderColor: '#e0e0e0',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: isTablet ? 16 : 14,
+    fontSize: isTablet ? 16 : 15,
+    color: '#333',
+  },
+  eyeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: isTablet ? 16 : 14,
   },
   inputError: {
     borderColor: '#ff6b6b',
