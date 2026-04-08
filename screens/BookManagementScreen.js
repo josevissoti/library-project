@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
-  Alert
+  Alert,
+  Image
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { booksService } from '../services/firebase';
@@ -28,7 +29,8 @@ export default function BookManagementScreen() {
     title: '',
     author: '',
     description: '',
-    price: ''
+    price: '',
+    image: ''
   });
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function BookManagementScreen() {
 
   const handleSaveBook = async () => {
     if (!formData.title.trim() || !formData.author.trim() || !formData.description.trim() || !formData.price) {
-      Alert.alert('Erro', 'Preencha todos os campos');
+      Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -75,7 +77,8 @@ export default function BookManagementScreen() {
         title: formData.title.trim(),
         author: formData.author.trim(),
         description: formData.description.trim(),
-        price: parseFloat(formData.price)
+        price: parseFloat(formData.price),
+        image: formData.image.trim() || ''
       };
 
       if (editingBook) {
@@ -102,7 +105,8 @@ export default function BookManagementScreen() {
       title: book.title,
       author: book.author,
       description: book.description,
-      price: book.price.toString()
+      price: book.price.toString(),
+      image: book.image || ''
     });
     setModalVisible(true);
   };
@@ -121,7 +125,7 @@ export default function BookManagementScreen() {
   const closeModal = () => {
     setModalVisible(false);
     setEditingBook(null);
-    setFormData({ title: '', author: '', description: '', price: '' });
+    setFormData({ title: '', author: '', description: '', price: '', image: '' });
   };
 
   const formatPrice = (price) => {
@@ -167,11 +171,20 @@ export default function BookManagementScreen() {
         ) : (
           books.map(book => (
             <View key={book.id} style={styles.card}>
-              <View style={styles.bookInfo}>
-                <Text style={styles.bookTitle}>{book.title}</Text>
-                <Text style={styles.bookAuthor}>Autor: {book.author}</Text>
-                <Text style={styles.bookDescription} numberOfLines={2}>{book.description}</Text>
-                <Text style={styles.bookPrice}>{formatPrice(book.price)}</Text>
+              <View style={styles.cardContent}>
+                {book.image && book.image.trim() !== '' && (
+                  <Image 
+                    source={{ uri: book.image }} 
+                    style={styles.bookImage}
+                    defaultSource={require('../assets/images/bookstore-logo.png')}
+                  />
+                )}
+                <View style={styles.bookInfo}>
+                  <Text style={styles.bookTitle}>{book.title}</Text>
+                  <Text style={styles.bookAuthor}>Autor: {book.author}</Text>
+                  <Text style={styles.bookDescription} numberOfLines={2}>{book.description}</Text>
+                  <Text style={styles.bookPrice}>{formatPrice(book.price)}</Text>
+                </View>
               </View>
               <View style={styles.bookActions}>
                 <TouchableOpacity style={[styles.actionButton, styles.editButton]} onPress={() => handleEditBook(book)}>
@@ -190,23 +203,24 @@ export default function BookManagementScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{editingBook ? 'Editar Livro' : 'Novo Livro'}</Text>
+            
             <TextInput
               style={styles.input}
-              placeholder="Título"
+              placeholder="Título *"
               placeholderTextColor="#999"
               value={formData.title}
               onChangeText={text => setFormData({ ...formData, title: text })}
             />
             <TextInput
               style={styles.input}
-              placeholder="Autor"
+              placeholder="Autor *"
               placeholderTextColor="#999"
               value={formData.author}
               onChangeText={text => setFormData({ ...formData, author: text })}
             />
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Descrição"
+              placeholder="Descrição *"
               placeholderTextColor="#999"
               multiline
               numberOfLines={3}
@@ -215,12 +229,21 @@ export default function BookManagementScreen() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Preço (ex: 39.90)"
+              placeholder="Preço * (ex: 39.90)"
               placeholderTextColor="#999"
               keyboardType="decimal-pad"
               value={formData.price}
               onChangeText={text => setFormData({ ...formData, price: text })}
             />
+            <TextInput
+              style={styles.input}
+              placeholder="URL da imagem (opcional)"
+              placeholderTextColor="#999"
+              autoCapitalize="none"
+              value={formData.image}
+              onChangeText={text => setFormData({ ...formData, image: text })}
+            />
+            
             <View style={styles.modalButtons}>
               <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={closeModal}>
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
@@ -289,27 +312,39 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cardContent: {
+    flexDirection: 'row',
+    padding: 12,
+  },
+  bookImage: {
+    width: 80,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 12,
+    resizeMode: 'cover',
+  },
   bookInfo: {
-    padding: 16,
+    flex: 1,
+    justifyContent: 'center',
   },
   bookTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#2e0000',
     marginBottom: 4,
   },
   bookAuthor: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   bookDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#888',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   bookPrice: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#6e0c0c',
   },
@@ -406,4 +441,4 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-});
+}); 

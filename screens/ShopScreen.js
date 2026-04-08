@@ -94,10 +94,14 @@ export default function ShopScreen() {
   };
 
   const renderBookCard = (item) => {
+    const imageUrl = item.image && item.image.trim() !== '' 
+      ? item.image 
+      : 'https://via.placeholder.com/150x200?text=Sem+Imagem';
+      
     return (
       <View style={styles.bookCard}>
         <Image 
-          source={{ uri: item.image || 'https://via.placeholder.com/150x200?text=Sem+Imagem' }} 
+          source={{ uri: imageUrl }} 
           style={styles.bookImage}
           defaultSource={require('../assets/images/bookstore-logo.png')}
         />

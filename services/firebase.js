@@ -183,6 +183,7 @@ export const booksService = {
         author: bookData.author,
         description: bookData.description,
         price: parseFloat(bookData.price),
+        image: bookData.image || '',
         userId: userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -276,6 +277,7 @@ export const booksService = {
         author: bookData.author,
         description: bookData.description,
         price: parseFloat(bookData.price),
+        image: bookData.image || '',
         updatedAt: new Date().toISOString()
       };
       
