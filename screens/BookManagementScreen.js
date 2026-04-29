@@ -13,7 +13,7 @@ import {
   Image
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { booksService } from '../services/firebase';
+import { booksService } from '../services/jsonbin';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;

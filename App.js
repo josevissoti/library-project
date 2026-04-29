@@ -13,13 +13,12 @@ const Stack = createStackNavigator();
 export default function App() {
   
   useEffect(() => {
-    // Testar conexão com Firebase quando o app iniciar
     const testConnection = async () => {
       const isConnected = await testFirebaseConnection();
       if (isConnected) {
-        console.log('✅ Firebase está pronto para uso!');
+        console.log('Firebase está pronto para uso!');
       } else {
-        console.log('❌ Problema na conexão com Firebase');
+        console.log('Problema na conexão com Firebase');
       }
     };
     

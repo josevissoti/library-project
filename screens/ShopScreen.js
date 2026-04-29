@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   StatusBar
 } from 'react-native';
-import { booksService } from '../services/firebase';
+import { booksService } from '../services/jsonbin';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
