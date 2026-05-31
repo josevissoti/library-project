@@ -1,8 +1,9 @@
-// library-project/screens/CartScreen.js
+// screens/CartScreen.js
 import React, { useState, useContext } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert,
   Dimensions, Image, SafeAreaView, StatusBar, ScrollView, ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCart } from '../context/CartContext';
@@ -12,6 +13,8 @@ import { ordersService, booksService, couponsService } from '../services/jsonbin
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
 const isSmallPhone = width < 380;
+
+const placeholderImage = require('../assets/images/bookstore-logo.png');
 
 export default function CartScreen() {
   const router = useRouter();
@@ -23,24 +26,49 @@ export default function CartScreen() {
   } = useCart();
 
   const [couponCode, setCouponCode] = useState('');
+  const [couponError, setCouponError] = useState('');
   const [loadingCep, setLoadingCep] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [clearModalVisible, setClearModalVisible] = useState(false);
+  const [cepError, setCepError] = useState('');
+  const [freightError, setFreightError] = useState('');
+  const [finalizeModalVisible, setFinalizeModalVisible] = useState(false);
 
-  const formatPrice = (p) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p);
+  const formatPrice = (p) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p);
+
+  const handleCepChange = (text) => {
+    let clean = text.replace(/\D/g, '');
+    if (clean.length > 8) clean = clean.slice(0, 8);
+    let formatted = clean;
+    if (clean.length > 5) {
+      formatted = clean.slice(0, 5) + '-' + clean.slice(5);
+    }
+    setCep(formatted);
+    if (clean.length === 8) {
+      setCepError('');
+    } else if (clean.length > 0 && clean.length < 8) {
+      setCepError('CEP incompleto. Digite 8 dígitos.');
+    } else {
+      setCepError('');
+    }
+  };
 
   const handleCalculateFreight = async () => {
     const cleanCep = cep.replace(/\D/g, '');
     if (cleanCep.length !== 8) {
-      Alert.alert('CEP inválido', 'Digite um CEP com 8 dígitos.');
+      setCepError('CEP inválido. Digite 8 dígitos.');
       return;
     }
+    setCepError('');
     setLoadingCep(true);
     try {
       const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
       const data = await response.json();
       if (data.erro) {
-        Alert.alert('CEP não encontrado');
-        setLoadingCep(false);
+        setCepError('CEP não encontrado.');
+        setAddress(null);
+        setFreight(0);
         return;
       }
       setAddress(data);
@@ -56,46 +84,74 @@ export default function CartScreen() {
       else if (sudeste.includes(uf)) valorFrete = 12;
       else if (sul.includes(uf)) valorFrete = 15;
       setFreight(valorFrete);
+      setFreightError('');
       Alert.alert('Frete calculado', `Valor: ${formatPrice(valorFrete)}`);
     } catch (e) {
-      Alert.alert('Erro', 'Não foi possível consultar o CEP.');
+      setCepError('Erro ao consultar o CEP. Verifique sua conexão.');
+      setAddress(null);
+      setFreight(0);
     } finally {
       setLoadingCep(false);
     }
   };
 
   const handleApplyCoupon = async () => {
+    setCouponError('');
     if (!couponCode.trim()) {
-      Alert.alert('Atenção', 'Digite um código de cupom.');
+      setCouponError('Digite um código de cupom.');
       return;
     }
     try {
       const validCoupon = await couponsService.validate(couponCode);
       applyCoupon(validCoupon);
-      Alert.alert('Cupom aplicado', `${validCoupon.discountPercent}% de desconto`);
+      setCouponCode('');
     } catch (e) {
-      Alert.alert('Erro', e.message);
+      setCouponError(e.message || 'Cupom inválido ou expirado.');
     }
   };
 
-  const handleFinalizePurchase = async () => {
+  const handleCouponCodeChange = (text) => {
+    setCouponCode(text);
+    if (couponError) setCouponError('');
+  };
+
+  const confirmClearCart = () => {
+    clearCart();
+    setClearModalVisible(false);
+  };
+
+  // Validação antes de abrir o modal de confirmação
+  const handlePressFinalize = () => {
+    setFreightError('');
     if (items.length === 0) {
       Alert.alert('Carrinho vazio');
       return;
     }
+    if (!address || freight === 0) {
+      setFreightError('Calcule o frete antes de finalizar a compra.');
+      return;
+    }
+    // Abre o modal de confirmação
+    setFinalizeModalVisible(true);
+  };
+
+  const handleFinalizePurchase = async () => {
+    setFinalizeModalVisible(false);
+    setFinalizing(true);
     try {
       for (const item of items) {
         if (item.book.stock < item.quantity) {
           Alert.alert('Estoque insuficiente', `O livro "${item.book.title}" tem apenas ${item.book.stock} unidades.`);
+          setFinalizing(false);
           return;
         }
       }
     } catch (e) {
       Alert.alert('Erro', 'Erro ao verificar estoque.');
+      setFinalizing(false);
       return;
     }
 
-    setFinalizing(true);
     try {
       for (const item of items) {
         await booksService.decreaseStock(item.book.id, item.quantity);
@@ -113,7 +169,7 @@ export default function CartScreen() {
         couponCode: coupon ? coupon.code : null,
         freight,
         total,
-        cep,
+        cep: cep.replace(/\D/g, ''),
         address,
       };
       await ordersService.create(order);
@@ -147,11 +203,20 @@ export default function CartScreen() {
     }
   };
 
+  const getItemImage = (book) => {
+    if (book.image && book.image.trim() !== '') {
+      return { uri: book.image };
+    }
+    return placeholderImage;
+  };
+
   const renderItem = ({ item }) => (
     <View style={styles.cartItem}>
       <Image
-        source={{ uri: item.book.image || 'https://via.placeholder.com/80x100?text=Sem+Imagem' }}
-        style={styles.itemImage} resizeMode="cover"
+        source={getItemImage(item.book)}
+        style={styles.itemImage}
+        resizeMode="cover"
+        defaultSource={placeholderImage}
       />
       <View style={styles.itemInfo}>
         <Text style={styles.itemTitle} numberOfLines={2}>{item.book.title}</Text>
@@ -164,8 +229,11 @@ export default function CartScreen() {
           <TouchableOpacity onPress={() => handleIncrease(item)} style={styles.qtyButtonSmall}>
             <Text style={styles.qtyButtonTextSmall}>+</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => removeItem(item.book.id)} style={styles.removeButton}>
-            <Text style={styles.removeButtonText}>🗑️</Text>
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={() => removeItem(item.book.id)}
+          >
+            <Text style={styles.removeButtonText}>Excluir</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -221,14 +289,14 @@ export default function CartScreen() {
               placeholder="00000-000"
               placeholderTextColor="#999"
               keyboardType="numeric"
-              maxLength={9}
               value={cep}
-              onChangeText={setCep}
+              onChangeText={handleCepChange}
             />
             <TouchableOpacity style={styles.calcButton} onPress={handleCalculateFreight} disabled={loadingCep}>
               {loadingCep ? <ActivityIndicator color="#fff" /> : <Text style={styles.calcButtonText}>Calcular frete</Text>}
             </TouchableOpacity>
           </View>
+          {cepError !== '' && <Text style={styles.errorText}>{cepError}</Text>}
           {address && (
             <Text style={styles.addressText}>
               {address.logradouro}, {address.bairro} - {address.localidade}/{address.uf}
@@ -242,13 +310,16 @@ export default function CartScreen() {
             placeholder="Código do cupom"
             placeholderTextColor="#999"
             value={couponCode}
-            onChangeText={setCouponCode}
+            onChangeText={handleCouponCodeChange}
             autoCapitalize="characters"
           />
           <TouchableOpacity style={styles.applyButton} onPress={handleApplyCoupon}>
             <Text style={styles.applyButtonText}>Aplicar</Text>
           </TouchableOpacity>
         </View>
+        {couponError !== '' && (
+          <Text style={styles.errorText}>{couponError}</Text>
+        )}
         {coupon && (
           <View style={styles.activeCoupon}>
             <Text style={styles.activeCouponText}>Cupom {coupon.code} (-{coupon.discountPercent}%)</Text>
@@ -277,23 +348,22 @@ export default function CartScreen() {
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalValue}>{formatPrice(total)}</Text>
           </View>
+          {/* Mensagem de erro inline do frete */}
+          {freightError !== '' && (
+            <Text style={[styles.errorText, { marginTop: 10, textAlign: 'center' }]}>{freightError}</Text>
+          )}
         </View>
 
         <View style={styles.footerButtons}>
           <TouchableOpacity
             style={[styles.footerButton, styles.clearButton]}
-            onPress={() => {
-              Alert.alert('Limpar carrinho', 'Deseja remover todos os itens?', [
-                { text: 'Cancelar' },
-                { text: 'Sim', onPress: clearCart },
-              ]);
-            }}
+            onPress={() => setClearModalVisible(true)}
           >
             <Text style={styles.clearButtonText}>Limpar carrinho</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.footerButton, styles.checkoutButton]}
-            onPress={handleFinalizePurchase}
+            onPress={handlePressFinalize}
             disabled={finalizing}
           >
             {finalizing ? (
@@ -304,6 +374,68 @@ export default function CartScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Modal de confirmação para limpar carrinho */}
+      <Modal
+        visible={clearModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setClearModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Limpar carrinho</Text>
+            <Text style={styles.modalMessage}>
+              Tem certeza que deseja remover todos os itens do carrinho?
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setClearModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalDeleteBtn}
+                onPress={confirmClearCart}
+              >
+                <Text style={styles.modalDeleteText}>Limpar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de confirmação para finalizar compra */}
+      <Modal
+        visible={finalizeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFinalizeModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Finalizar compra</Text>
+            <Text style={styles.modalMessage}>
+              Deseja realmente finalizar esta compra?
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setFinalizeModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalDeleteBtn}
+                onPress={handleFinalizePurchase}
+              >
+                <Text style={styles.modalDeleteText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -338,8 +470,14 @@ const styles = StyleSheet.create({
   qtyButtonSmall: { backgroundColor: '#e0e0e0', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   qtyButtonTextSmall: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   itemQuantity: { fontSize: 16, fontWeight: 'bold', marginHorizontal: 12 },
-  removeButton: { marginLeft: 'auto', padding: 4 },
-  removeButtonText: { fontSize: 18 },
+  removeButton: {
+    marginLeft: 'auto',
+    backgroundColor: '#ff4444',
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  removeButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   cepContainer: { marginBottom: 12 },
   cepLabel: { fontSize: 14, fontWeight: 'bold', color: '#fff', marginBottom: 6 },
   cepRow: { flexDirection: 'row', alignItems: 'center' },
@@ -353,7 +491,7 @@ const styles = StyleSheet.create({
   },
   calcButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   addressText: { color: '#ccc', fontSize: 13, marginTop: 4 },
-  couponRow: { flexDirection: 'row', marginBottom: 10 },
+  couponRow: { flexDirection: 'row', marginBottom: 8 },
   couponInput: {
     flex: 1, backgroundColor: '#fff', borderRadius: 8, padding: 12, fontSize: 14,
     borderWidth: 1, borderColor: '#ddd', marginRight: 8,
@@ -362,6 +500,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#6e0c0c', borderRadius: 8, paddingHorizontal: 20, justifyContent: 'center',
   },
   applyButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    marginLeft: 4,
+  },
   activeCoupon: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#e8f5e9', padding: 10, borderRadius: 8, marginBottom: 10,
@@ -388,4 +533,62 @@ const styles = StyleSheet.create({
   clearButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   checkoutButton: { backgroundColor: '#6e0c0c' },
   checkoutButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2e0000',
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalCancelBtn: {
+    flex: 1,
+    backgroundColor: '#ccc',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#333',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalDeleteBtn: {
+    flex: 1,
+    backgroundColor: '#ff4444',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginLeft: 8,
+    alignItems: 'center',
+  },
+  modalDeleteText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });

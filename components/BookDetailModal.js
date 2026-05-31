@@ -1,5 +1,5 @@
-// library-project/components/BookDetailModal.js
-import React, { useState } from 'react';
+// components/BookDetailModal.js
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, Modal, StyleSheet, Image, TouchableOpacity, TextInput,
   Dimensions, ScrollView, Alert,
@@ -11,53 +11,70 @@ const isTablet = width >= 768;
 const isSmallPhone = width < 380;
 
 export default function BookDetailModal({ visible, book, onClose }) {
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [inputValue, setInputValue] = useState('1');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Limpa erro e reseta quantidade sempre que o modal for aberto
+  useEffect(() => {
+    if (visible) {
+      setQuantity(1);
+      setInputValue('1');
+      setErrorMessage('');
+    }
+  }, [visible]);
 
   if (!book) return null;
 
-  // Garante que stock seja um número (0 se não existir)
-  const stock = book.stock ?? 0;
+  const stock = book.stock != null ? book.stock : 0;
+
+  // Quantidade deste livro que já está no carrinho
+  const existingItem = items.find(item => item.book.id === book.id);
+  const qtyInCart = existingItem ? existingItem.quantity : 0;
+  const availableStock = stock - qtyInCart;
 
   const updateQuantity = (newQty) => {
     if (newQty < 1) newQty = 1;
     setQuantity(newQty);
     setInputValue(newQty.toString());
+    setErrorMessage(''); // limpa erro ao alterar
   };
 
   const handleIncrease = () => updateQuantity(quantity + 1);
   const handleDecrease = () => updateQuantity(quantity - 1);
 
   const handleInputChange = (text) => {
-    if (text === '') {
-      setInputValue('');
-      return;
-    }
+    if (text === '') { setInputValue(''); return; }
     const num = parseInt(text, 10);
     if (!isNaN(num) && num > 0) {
       setQuantity(num);
       setInputValue(num.toString());
+      setErrorMessage('');
     } else if (text === '0') {
       setQuantity(1);
       setInputValue('1');
+      setErrorMessage('');
     } else {
       setInputValue(quantity.toString());
     }
   };
 
   const handleAddToCart = async () => {
-    // Validação de quantidade mínima
+    // Limpa qualquer erro anterior
+    setErrorMessage('');
+
     if (quantity <= 0) {
-      Alert.alert('Quantidade inválida', 'A quantidade deve ser maior que zero.');
+      setErrorMessage('A quantidade deve ser maior que zero.');
       return;
     }
-
-    // Validação de estoque (sempre será feita, pois stock tem valor padrão 0)
-    if (quantity > stock) {
-      Alert.alert(
-        'Estoque insuficiente',
-        `Quantidade solicitada: ${quantity}\nDisponível em estoque: ${stock}`
+    if (stock === 0) {
+      setErrorMessage('Este livro não possui estoque disponível no momento.');
+      return;
+    }
+    if (quantity > availableStock) {
+      setErrorMessage(
+        `Estoque insuficiente. Disponível: ${availableStock} unidade(s).`
       );
       return;
     }
@@ -67,8 +84,10 @@ export default function BookDetailModal({ visible, book, onClose }) {
       onClose();
       setQuantity(1);
       setInputValue('1');
+      setErrorMessage('');
     } catch (error) {
-      Alert.alert('Erro ao adicionar', error.message);
+      // Caso o contexto ainda dispare um erro (ex: race condition)
+      setErrorMessage(error.message);
     }
   };
 
@@ -76,9 +95,7 @@ export default function BookDetailModal({ visible, book, onClose }) {
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
 
   const placeholder = require('../assets/images/bookstore-logo.png');
-  const imageSource = book.image && book.image.trim() !== ''
-    ? { uri: book.image }
-    : placeholder;
+  const imageSource = book.image && book.image.trim() !== '' ? { uri: book.image } : placeholder;
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -86,21 +103,25 @@ export default function BookDetailModal({ visible, book, onClose }) {
         <View style={[styles.container, isSmallPhone && styles.containerSmall]}>
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, isSmallPhone && styles.scrollContentSmall]}
-          >
+            contentContainerStyle={[styles.scrollContent, isSmallPhone && styles.scrollContentSmall]}>
             <Image source={imageSource} style={styles.image} resizeMode="cover" />
-
             <Text style={[styles.title, isSmallPhone && styles.titleSmall]}>{book.title}</Text>
             <Text style={[styles.author, isSmallPhone && styles.authorSmall]}>por {book.author}</Text>
             <Text style={[styles.description, isSmallPhone && styles.descriptionSmall]} numberOfLines={4}>
               {book.description}
             </Text>
-
             <View style={styles.priceQuantityContainer}>
               <Text style={[styles.price, isSmallPhone && styles.priceSmall]}>
                 {formatPrice(book.price)}
               </Text>
-              <Text style={styles.stockText}>Estoque: {stock} unid.</Text>
+              <Text style={styles.stockText}>
+                Estoque: {stock} unid.{stock === 0 ? ' (Indisponível)' : ''}
+              </Text>
+              {qtyInCart > 0 && (
+                <Text style={styles.cartInfo}>
+                  (Já no carrinho: {qtyInCart} un.)
+                </Text>
+              )}
               <View style={styles.quantityRow}>
                 <TouchableOpacity onPress={handleDecrease} style={styles.qtyButton}>
                   <Text style={styles.qtyButtonText}>−</Text>
@@ -118,13 +139,15 @@ export default function BookDetailModal({ visible, book, onClose }) {
                   <Text style={styles.qtyButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
+              {/* Mensagem de erro inline */}
+              {errorMessage !== '' && (
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              )}
             </View>
-
             <TouchableOpacity style={styles.addButton} onPress={handleAddToCart}>
               <Text style={styles.addButtonText}>Adicionar ao carrinho</Text>
             </TouchableOpacity>
           </ScrollView>
-
           <TouchableOpacity style={styles.closeIcon} onPress={onClose}>
             <Text style={styles.closeIconText}>✕</Text>
           </TouchableOpacity>
@@ -159,8 +182,9 @@ const styles = StyleSheet.create({
   priceQuantityContainer: { alignItems: 'center', marginBottom: 20, width: '100%' },
   price: { fontSize: 22, fontWeight: 'bold', color: '#6e0c0c', marginBottom: 4, textAlign: 'center' },
   priceSmall: { fontSize: 18 },
-  stockText: { fontSize: 13, color: '#2e0000', marginBottom: 8 },
-  quantityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  stockText: { fontSize: 13, color: '#2e0000', marginBottom: 4 },
+  cartInfo: { fontSize: 12, color: '#888', marginBottom: 6 },
+  quantityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   qtyButton: { backgroundColor: '#6e0c0c', width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   qtyButtonText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
   qtyInput: {
@@ -169,4 +193,12 @@ const styles = StyleSheet.create({
   },
   addButton: { backgroundColor: '#6e0c0c', borderRadius: 10, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', width: '100%' },
   addButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 10,
+    textAlign: 'center',
+    paddingHorizontal: 10,
+  },
 });

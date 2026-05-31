@@ -1,8 +1,8 @@
-// library-project/screens/CouponManagementScreen.js
+// screens/CouponManagementScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, Alert,
-  FlatList, SafeAreaView, StatusBar, ActivityIndicator,
+  FlatList, SafeAreaView, StatusBar, ActivityIndicator, Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { couponsService } from '../services/jsonbin';
@@ -14,6 +14,11 @@ export default function CouponManagementScreen() {
   const [code, setCode] = useState('');
   const [discount, setDiscount] = useState('');
   const [validUntil, setValidUntil] = useState('');
+  const [dateError, setDateError] = useState('');
+
+  // Estados para o modal de confirmação
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [couponToDelete, setCouponToDelete] = useState(null);
 
   const loadCoupons = useCallback(async () => {
     try {
@@ -31,44 +36,112 @@ export default function CouponManagementScreen() {
     loadCoupons();
   }, [loadCoupons]);
 
+  // Máscara para data brasileira (dd/mm/aaaa)
+  const handleDateChange = (text) => {
+    let clean = text.replace(/\D/g, '');
+    if (clean.length > 8) clean = clean.slice(0, 8);
+    let formatted = '';
+    if (clean.length > 0) formatted += clean.slice(0, 2);
+    if (clean.length > 2) formatted += '/' + clean.slice(2, 4);
+    if (clean.length > 4) formatted += '/' + clean.slice(4, 8);
+    setValidUntil(formatted);
+    // Validação inline
+    if (clean.length === 8) {
+      const day = parseInt(clean.slice(0, 2), 10);
+      const month = parseInt(clean.slice(2, 4), 10);
+      const year = parseInt(clean.slice(4, 8), 10);
+      if (day < 1 || day > 31 || month < 1 || month > 12 || year < 2024) {
+        setDateError('Data inválida.');
+      } else {
+        setDateError('');
+      }
+    } else if (clean.length > 0 && clean.length < 8) {
+      setDateError('Data incompleta.');
+    } else {
+      setDateError('');
+    }
+  };
+
+  // Converte dd/mm/aaaa para ISO (YYYY-MM-DD) para envio
+  const convertToISO = (brDate) => {
+    const parts = brDate.split('/');
+    if (parts.length !== 3) return null;
+    const day = parts[0], month = parts[1], year = parts[2];
+    return `${year}-${month}-${day}`;
+  };
+
   const handleCreate = async () => {
     if (!code.trim() || !discount) {
       Alert.alert('Atenção', 'Código e desconto são obrigatórios');
       return;
     }
-    try {
-      await couponsService.create({ code, discountPercent: discount, validUntil });
-      Alert.alert('Sucesso', 'Cupom criado!');
-      setCode('');
-      setDiscount('');
-      setValidUntil('');
-      loadCoupons();
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível criar o cupom');
+    if (validUntil.trim() !== '') {
+      if (dateError) {
+        Alert.alert('Data inválida', 'Corrija a data de validade.');
+        return;
+      }
+      const isoDate = convertToISO(validUntil);
+      if (!isoDate) {
+        Alert.alert('Data inválida', 'Formato de data incorreto.');
+        return;
+      }
+      try {
+        await couponsService.create({
+          code,
+          discountPercent: discount,
+          validUntil: isoDate,
+        });
+        Alert.alert('Sucesso', 'Cupom criado!');
+        setCode('');
+        setDiscount('');
+        setValidUntil('');
+        setDateError('');
+        loadCoupons();
+      } catch (e) {
+        Alert.alert('Erro', 'Não foi possível criar o cupom');
+      }
+    } else {
+      // Sem data
+      try {
+        await couponsService.create({
+          code,
+          discountPercent: discount,
+          validUntil: null,
+        });
+        Alert.alert('Sucesso', 'Cupom criado!');
+        setCode('');
+        setDiscount('');
+        setValidUntil('');
+        setDateError('');
+        loadCoupons();
+      } catch (e) {
+        Alert.alert('Erro', 'Não foi possível criar o cupom');
+      }
     }
   };
 
-  const handleDelete = (id) => {
-    Alert.alert(
-      'Confirmar exclusão',
-      'Tem certeza que deseja excluir este cupom?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await couponsService.delete(id);
-              Alert.alert('Sucesso', 'Cupom excluído com sucesso!');
-              loadCoupons();
-            } catch (error) {
-              Alert.alert('Erro', error.message);
-            }
-          },
-        },
-      ]
-    );
+  const handleDeletePress = (id) => {
+    setCouponToDelete(id);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!couponToDelete) return;
+    try {
+      await couponsService.delete(couponToDelete);
+      Alert.alert('Sucesso', 'Cupom excluído com sucesso!');
+      loadCoupons();
+    } catch (error) {
+      Alert.alert('Erro', error.message || 'Falha ao excluir cupom');
+    } finally {
+      setDeleteModalVisible(false);
+      setCouponToDelete(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteModalVisible(false);
+    setCouponToDelete(null);
   };
 
   const renderCoupon = ({ item }) => (
@@ -76,10 +149,15 @@ export default function CouponManagementScreen() {
       <View style={{ flex: 1 }}>
         <Text style={styles.couponCode}>{item.code}</Text>
         <Text style={styles.couponDetail}>{item.discountPercent}% de desconto</Text>
-        {item.validUntil && <Text style={styles.couponDetail}>Válido até {item.validUntil}</Text>}
+        {item.validUntil && (
+          <Text style={styles.couponDetail}>Válido até {item.validUntil}</Text>
+        )}
       </View>
-      <TouchableOpacity onPress={() => handleDelete(item.id)}>
-        <Text style={styles.deleteBtn}>🗑️</Text>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDeletePress(item.id)}
+      >
+        <Text style={styles.deleteButtonText}>Excluir</Text>
       </TouchableOpacity>
     </View>
   );
@@ -114,11 +192,14 @@ export default function CouponManagementScreen() {
         />
         <TextInput
           style={styles.input}
-          placeholder="Validade (AAAA-MM-DD) opcional"
+          placeholder="Validade (dd/mm/aaaa) opcional"
           placeholderTextColor="#999"
           value={validUntil}
-          onChangeText={setValidUntil}
+          onChangeText={handleDateChange}
+          keyboardType="numeric"
+          maxLength={10}
         />
+        {dateError !== '' && <Text style={styles.errorText}>{dateError}</Text>}
         <TouchableOpacity style={styles.createButton} onPress={handleCreate}>
           <Text style={styles.createButtonText}>Criar cupom</Text>
         </TouchableOpacity>
@@ -139,6 +220,31 @@ export default function CouponManagementScreen() {
           }
         />
       )}
+
+      {/* Modal de confirmação de exclusão */}
+      <Modal
+        visible={deleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={cancelDelete}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Confirmar exclusão</Text>
+            <Text style={styles.modalMessage}>
+              Tem certeza que deseja excluir este cupom?
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={cancelDelete}>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalDeleteBtn} onPress={confirmDelete}>
+                <Text style={styles.modalDeleteText}>Excluir</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -157,6 +263,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 10, fontSize: 16,
   },
+  errorText: { color: '#ff4444', fontSize: 13, marginBottom: 10, marginLeft: 4 },
   createButton: {
     backgroundColor: '#6e0c0c', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 5,
   },
@@ -167,5 +274,73 @@ const styles = StyleSheet.create({
   },
   couponCode: { fontWeight: 'bold', fontSize: 16, color: '#2e0000' },
   couponDetail: { fontSize: 13, color: '#666', marginTop: 2 },
-  deleteBtn: { fontSize: 20 },
+  deleteButton: {
+    backgroundColor: '#ff4444',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2e0000',
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalCancelBtn: {
+    flex: 1,
+    backgroundColor: '#ccc',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#333',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalDeleteBtn: {
+    flex: 1,
+    backgroundColor: '#ff4444',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginLeft: 8,
+    alignItems: 'center',
+  },
+  modalDeleteText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });

@@ -1,4 +1,4 @@
-// library-project/screens/BookManagementScreen.js
+// screens/BookManagementScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -20,6 +20,8 @@ const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
 const isSmallPhone = width < 380;
 
+const placeholderImage = require('../assets/images/bookstore-logo.png');
+
 export default function BookManagementScreen() {
   const [user, setUser] = useState(null);
   const [books, setBooks] = useState([]);
@@ -33,7 +35,7 @@ export default function BookManagementScreen() {
     author: '',
     description: '',
     price: '',
-    stock: '',     // <-- novo campo
+    stock: '',
     image: ''
   });
 
@@ -153,6 +155,14 @@ export default function BookManagementScreen() {
   const getHorizontalMargin = () => (isSmallPhone ? 12 : 20);
   const getVerticalMargin = () => (isSmallPhone ? 15 : 20);
 
+  // Função auxiliar para obter a imagem (placeholder se não houver URL)
+  const getBookImage = (book) => {
+    if (book.image && book.image.trim() !== '') {
+      return { uri: book.image };
+    }
+    return placeholderImage;
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -187,13 +197,12 @@ export default function BookManagementScreen() {
           books.map(book => (
             <View key={book.id} style={styles.card}>
               <View style={styles.cardContent}>
-                {book.image && book.image.trim() !== '' && (
-                  <Image
-                    source={{ uri: book.image }}
-                    style={styles.bookImage}
-                    defaultSource={require('../assets/images/bookstore-logo.png')}
-                  />
-                )}
+                <Image
+                  source={getBookImage(book)}
+                  style={styles.bookImage}
+                  defaultSource={placeholderImage}
+                  resizeMode="cover"
+                />
                 <View style={styles.bookInfo}>
                   <Text style={styles.bookTitle}>{book.title}</Text>
                   <Text style={styles.bookAuthor}>Autor: {book.author}</Text>
@@ -252,7 +261,6 @@ export default function BookManagementScreen() {
               value={formData.price}
               onChangeText={text => setFormData({ ...formData, price: text })}
             />
-            {/* Novo campo de estoque */}
             <TextInput
               style={styles.input}
               placeholder="Quantidade em estoque"
@@ -319,7 +327,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3
   },
   cardContent: { flexDirection: 'row', padding: 12 },
-  bookImage: { width: 80, height: 100, borderRadius: 8, marginRight: 12, resizeMode: 'cover' },
+  bookImage: { width: 80, height: 100, borderRadius: 8, marginRight: 12, backgroundColor: '#f0f0f0' },
   bookInfo: { flex: 1, justifyContent: 'center' },
   bookTitle: { fontSize: 16, fontWeight: 'bold', color: '#2e0000', marginBottom: 4 },
   bookAuthor: { fontSize: 13, color: '#666', marginBottom: 4 },
