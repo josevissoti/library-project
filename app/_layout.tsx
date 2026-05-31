@@ -1,10 +1,14 @@
+// library-project/app/_layout.tsx
 import { Stack } from 'expo-router';
 import { AuthProvider } from '../context/AuthContext';
+import { CartProvider } from '../context/CartContext';
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <CartProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </CartProvider>
     </AuthProvider>
   );
 }

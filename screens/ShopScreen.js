@@ -1,3 +1,4 @@
+// library-project/screens/ShopScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -12,18 +13,25 @@ import {
   ActivityIndicator,
   StatusBar
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { booksService } from '../services/jsonbin';
+import { useCart } from '../context/CartContext';
+import BookDetailModal from '../components/BookDetailModal';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
 
 export default function ShopScreen() {
-  const [cart, setCart] = useState([]);
+  const router = useRouter();
+  const { itemCount } = useCart();
   const [numColumns, setNumColumns] = useState(2);
   const [searchText, setSearchText] = useState('');
   const [books, setBooks] = useState([]);
   const [filteredBooks, setFilteredBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
 
   useEffect(() => {
     updateColumns();
@@ -77,9 +85,9 @@ export default function ShopScreen() {
     }
   };
 
-  const addToCart = (book) => {
-    setCart([...cart, book]);
-    Alert.alert('Sucesso', `${book.title} adicionado ao carrinho!`);
+  const handleBookPress = (book) => {
+    setSelectedBook(book);
+    setDetailModalVisible(true);
   };
 
   const clearSearch = () => {
@@ -99,7 +107,11 @@ export default function ShopScreen() {
       : 'https://via.placeholder.com/150x200?text=Sem+Imagem';
       
     return (
-      <View style={styles.bookCard}>
+      <TouchableOpacity
+        style={styles.bookCard}
+        onPress={() => handleBookPress(item)}
+        activeOpacity={0.9}
+      >
         <Image 
           source={{ uri: imageUrl }} 
           style={styles.bookImage}
@@ -123,18 +135,9 @@ export default function ShopScreen() {
             <Text style={styles.bookPrice}>
               {formatPrice(item.price)}
             </Text>
-            <TouchableOpacity 
-              style={styles.buyButton}
-              onPress={() => addToCart(item)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.buyButtonText}>
-                Comprar
-              </Text>
-            </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -191,12 +194,12 @@ export default function ShopScreen() {
         <Text style={styles.headerTitle}>BookStore</Text>
         <TouchableOpacity
           style={styles.cartButton}
-          onPress={() => Alert.alert('Carrinho', `${cart.length} item(ns) no carrinho`)}
+          onPress={() => router.push('/cart')}
         >
           <Text style={styles.cartIcon}>🛒</Text>
-          {cart.length > 0 && (
+          {itemCount > 0 && (
             <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{cart.length}</Text>
+              <Text style={styles.cartBadgeText}>{itemCount}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -232,6 +235,13 @@ export default function ShopScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Modal de detalhes do livro */}
+      <BookDetailModal
+        visible={detailModalVisible}
+        book={selectedBook}
+        onClose={() => setDetailModalVisible(false)}
+      />
     </View>
   );
 }
@@ -389,17 +399,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#6e0c0c',
-  },
-  buyButton: {
-    backgroundColor: '#6e0c0c',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  buyButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   emptyContainer: {
     alignItems: 'center',
