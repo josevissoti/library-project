@@ -1,3 +1,4 @@
+// library-project/screens/BookManagementScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -32,6 +33,7 @@ export default function BookManagementScreen() {
     author: '',
     description: '',
     price: '',
+    stock: '',     // <-- novo campo
     image: ''
   });
 
@@ -80,6 +82,7 @@ export default function BookManagementScreen() {
         author: formData.author.trim(),
         description: formData.description.trim(),
         price: parseFloat(formData.price),
+        stock: parseInt(formData.stock) || 0,
         image: formData.image.trim() || ''
       };
 
@@ -108,6 +111,7 @@ export default function BookManagementScreen() {
       author: book.author,
       description: book.description,
       price: book.price.toString(),
+      stock: book.stock ? book.stock.toString() : '0',
       image: book.image || ''
     });
     setModalVisible(true);
@@ -120,7 +124,6 @@ export default function BookManagementScreen() {
 
   const handleDeleteBook = async () => {
     if (!bookToDelete) return;
-    
     try {
       await booksService.deleteBook(bookToDelete.id, user.id);
       Alert.alert('Sucesso', 'Livro excluído!');
@@ -135,7 +138,7 @@ export default function BookManagementScreen() {
   const closeModal = () => {
     setModalVisible(false);
     setEditingBook(null);
-    setFormData({ title: '', author: '', description: '', price: '', image: '' });
+    setFormData({ title: '', author: '', description: '', price: '', stock: '', image: '' });
   };
 
   const closeDeleteModal = () => {
@@ -163,10 +166,7 @@ export default function BookManagementScreen() {
     <ScrollView
       contentContainerStyle={[
         styles.scrollContent,
-        {
-          paddingHorizontal: getHorizontalMargin(),
-          paddingVertical: getVerticalMargin(),
-        }
+        { paddingHorizontal: getHorizontalMargin(), paddingVertical: getVerticalMargin() }
       ]}
       showsVerticalScrollIndicator={false}
     >
@@ -188,8 +188,8 @@ export default function BookManagementScreen() {
             <View key={book.id} style={styles.card}>
               <View style={styles.cardContent}>
                 {book.image && book.image.trim() !== '' && (
-                  <Image 
-                    source={{ uri: book.image }} 
+                  <Image
+                    source={{ uri: book.image }}
                     style={styles.bookImage}
                     defaultSource={require('../assets/images/bookstore-logo.png')}
                   />
@@ -199,6 +199,7 @@ export default function BookManagementScreen() {
                   <Text style={styles.bookAuthor}>Autor: {book.author}</Text>
                   <Text style={styles.bookDescription} numberOfLines={2}>{book.description}</Text>
                   <Text style={styles.bookPrice}>{formatPrice(book.price)}</Text>
+                  <Text style={styles.bookStock}>Estoque: {book.stock || 0} unid.</Text>
                 </View>
               </View>
               <View style={styles.bookActions}>
@@ -219,7 +220,7 @@ export default function BookManagementScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{editingBook ? 'Editar Livro' : 'Novo Livro'}</Text>
-            
+
             <TextInput
               style={styles.input}
               placeholder="Título *"
@@ -251,6 +252,15 @@ export default function BookManagementScreen() {
               value={formData.price}
               onChangeText={text => setFormData({ ...formData, price: text })}
             />
+            {/* Novo campo de estoque */}
+            <TextInput
+              style={styles.input}
+              placeholder="Quantidade em estoque"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+              value={formData.stock}
+              onChangeText={text => setFormData({ ...formData, stock: text })}
+            />
             <TextInput
               style={styles.input}
               placeholder="URL da imagem (opcional)"
@@ -259,7 +269,7 @@ export default function BookManagementScreen() {
               value={formData.image}
               onChangeText={text => setFormData({ ...formData, image: text })}
             />
-            
+
             <View style={styles.modalButtons}>
               <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={closeModal}>
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
@@ -296,230 +306,58 @@ export default function BookManagementScreen() {
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#2e0000',
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-    marginTop: 10,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    backgroundColor: '#2e0000',
-  },
-  contentWrapper: {
-    maxWidth: 500,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: isTablet ? 24 : 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  addButton: {
-    backgroundColor: '#6e0c0c',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#2e0000' },
+  loadingText: { color: '#fff', fontSize: 16, marginTop: 10 },
+  scrollContent: { flexGrow: 1, backgroundColor: '#2e0000' },
+  contentWrapper: { maxWidth: 500, width: '100%', alignSelf: 'center' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  headerTitle: { fontSize: isTablet ? 24 : 20, fontWeight: 'bold', color: '#fff' },
+  addButton: { backgroundColor: '#6e0c0c', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  addButtonText: { color: '#fff', fontWeight: 'bold' },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#fff', borderRadius: 12, marginBottom: 16, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3
   },
-  cardContent: {
-    flexDirection: 'row',
-    padding: 12,
-  },
-  bookImage: {
-    width: 80,
-    height: 100,
-    borderRadius: 8,
-    marginRight: 12,
-    resizeMode: 'cover',
-  },
-  bookInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  bookTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2e0000',
-    marginBottom: 4,
-  },
-  bookAuthor: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 4,
-  },
-  bookDescription: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 6,
-  },
-  bookPrice: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#6e0c0c',
-  },
-  bookActions: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  editButton: {
-    backgroundColor: '#f5f5f5',
-  },
-  deleteButton: {
-    backgroundColor: '#ffe5e5',
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2e0000',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 50,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    width: isTablet ? '80%' : '90%',
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#2e0000',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
+  cardContent: { flexDirection: 'row', padding: 12 },
+  bookImage: { width: 80, height: 100, borderRadius: 8, marginRight: 12, resizeMode: 'cover' },
+  bookInfo: { flex: 1, justifyContent: 'center' },
+  bookTitle: { fontSize: 16, fontWeight: 'bold', color: '#2e0000', marginBottom: 4 },
+  bookAuthor: { fontSize: 13, color: '#666', marginBottom: 4 },
+  bookDescription: { fontSize: 12, color: '#888', marginBottom: 6 },
+  bookPrice: { fontSize: 16, fontWeight: 'bold', color: '#6e0c0c' },
+  bookStock: { fontSize: 12, color: '#2e0000', marginTop: 4 },
+  bookActions: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#f0f0f0' },
+  actionButton: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  editButton: { backgroundColor: '#f5f5f5' },
+  deleteButton: { backgroundColor: '#ffe5e5' },
+  actionButtonText: { fontSize: 14, fontWeight: '600', color: '#2e0000' },
+  emptyContainer: { alignItems: 'center', marginTop: 50 },
+  emptyText: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
+  emptySubText: { fontSize: 14, color: '#999', marginTop: 8 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { backgroundColor: '#fff', borderRadius: 20, padding: 24, width: isTablet ? '80%' : '90%' },
+  modalTitle: { fontSize: 22, fontWeight: 'bold', color: '#2e0000', marginBottom: 20, textAlign: 'center' },
   input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5', borderRadius: 10, padding: 12, fontSize: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: '#e0e0e0'
   },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginHorizontal: 6,
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-  },
-  saveButton: {
-    backgroundColor: '#6e0c0c',
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontWeight: '600',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
+  modalButton: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginHorizontal: 6 },
+  cancelButton: { backgroundColor: '#f0f0f0' },
+  saveButton: { backgroundColor: '#6e0c0c' },
+  cancelButtonText: { color: '#666', fontWeight: '600' },
+  saveButtonText: { color: '#fff', fontWeight: 'bold' },
   deleteModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    width: isTablet ? '70%' : '80%',
-    alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 20, padding: 24,
+    width: isTablet ? '70%' : '80%', alignItems: 'center'
   },
-  deleteModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2e0000',
-    marginBottom: 16,
-  },
-  deleteModalMessage: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  deleteModalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  deleteModalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginHorizontal: 8,
-  },
-  cancelDeleteButton: {
-    backgroundColor: '#f0f0f0',
-  },
-  confirmDeleteButton: {
-    backgroundColor: '#ff6b6b',
-  },
-  cancelDeleteButtonText: {
-    color: '#666',
-    fontWeight: '600',
-  },
-  confirmDeleteButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+  deleteModalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2e0000', marginBottom: 16 },
+  deleteModalMessage: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 24 },
+  deleteModalButtons: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
+  deleteModalButton: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginHorizontal: 8 },
+  cancelDeleteButton: { backgroundColor: '#f0f0f0' },
+  confirmDeleteButton: { backgroundColor: '#ff6b6b' },
+  cancelDeleteButtonText: { color: '#666', fontWeight: '600' },
+  confirmDeleteButtonText: { color: '#fff', fontWeight: 'bold' },
 });
