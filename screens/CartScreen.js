@@ -1,4 +1,3 @@
-// screens/CartScreen.js
 import React, { useState, useContext } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert,
@@ -9,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useCart } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { ordersService, booksService, couponsService } from '../services/jsonbin';
+import { showPurchaseNotification } from '../services/notificationService';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
@@ -120,7 +120,6 @@ export default function CartScreen() {
     setClearModalVisible(false);
   };
 
-  // Validação antes de abrir o modal de confirmação
   const handlePressFinalize = () => {
     setFreightError('');
     if (items.length === 0) {
@@ -131,7 +130,6 @@ export default function CartScreen() {
       setFreightError('Calcule o frete antes de finalizar a compra.');
       return;
     }
-    // Abre o modal de confirmação
     setFinalizeModalVisible(true);
   };
 
@@ -173,6 +171,13 @@ export default function CartScreen() {
         address,
       };
       await ordersService.create(order);
+
+      try {
+        await showPurchaseNotification();
+      } catch (notifError) {
+        console.warn('Falha ao exibir notificação:', notifError);
+      }
+
       Alert.alert('Compra finalizada', 'Seu pedido foi registrado com sucesso!');
       clearCart();
       router.back();
@@ -348,7 +353,6 @@ export default function CartScreen() {
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalValue}>{formatPrice(total)}</Text>
           </View>
-          {/* Mensagem de erro inline do frete */}
           {freightError !== '' && (
             <Text style={[styles.errorText, { marginTop: 10, textAlign: 'center' }]}>{freightError}</Text>
           )}
@@ -375,7 +379,6 @@ export default function CartScreen() {
         </View>
       </ScrollView>
 
-      {/* Modal de confirmação para limpar carrinho */}
       <Modal
         visible={clearModalVisible}
         transparent
@@ -406,7 +409,6 @@ export default function CartScreen() {
         </View>
       </Modal>
 
-      {/* Modal de confirmação para finalizar compra */}
       <Modal
         visible={finalizeModalVisible}
         transparent

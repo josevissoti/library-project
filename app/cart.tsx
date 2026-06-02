@@ -1,4 +1,3 @@
-// library-project/app/cart.tsx
 import React from 'react';
 import CartScreen from '../screens/CartScreen'
 

@@ -1,4 +1,3 @@
-// library-project/screens/ProfileScreen.js
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, Image, ScrollView, TouchableOpacity,

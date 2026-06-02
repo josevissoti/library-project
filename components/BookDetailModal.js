@@ -1,4 +1,3 @@
-// components/BookDetailModal.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, Modal, StyleSheet, Image, TouchableOpacity, TextInput,
@@ -16,7 +15,6 @@ export default function BookDetailModal({ visible, book, onClose }) {
   const [inputValue, setInputValue] = useState('1');
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Limpa erro e reseta quantidade sempre que o modal for aberto
   useEffect(() => {
     if (visible) {
       setQuantity(1);
@@ -29,7 +27,6 @@ export default function BookDetailModal({ visible, book, onClose }) {
 
   const stock = book.stock != null ? book.stock : 0;
 
-  // Quantidade deste livro que já está no carrinho
   const existingItem = items.find(item => item.book.id === book.id);
   const qtyInCart = existingItem ? existingItem.quantity : 0;
   const availableStock = stock - qtyInCart;
@@ -38,7 +35,7 @@ export default function BookDetailModal({ visible, book, onClose }) {
     if (newQty < 1) newQty = 1;
     setQuantity(newQty);
     setInputValue(newQty.toString());
-    setErrorMessage(''); // limpa erro ao alterar
+    setErrorMessage('');
   };
 
   const handleIncrease = () => updateQuantity(quantity + 1);
@@ -61,7 +58,6 @@ export default function BookDetailModal({ visible, book, onClose }) {
   };
 
   const handleAddToCart = async () => {
-    // Limpa qualquer erro anterior
     setErrorMessage('');
 
     if (quantity <= 0) {
@@ -86,7 +82,6 @@ export default function BookDetailModal({ visible, book, onClose }) {
       setInputValue('1');
       setErrorMessage('');
     } catch (error) {
-      // Caso o contexto ainda dispare um erro (ex: race condition)
       setErrorMessage(error.message);
     }
   };
@@ -139,7 +134,6 @@ export default function BookDetailModal({ visible, book, onClose }) {
                   <Text style={styles.qtyButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
-              {/* Mensagem de erro inline */}
               {errorMessage !== '' && (
                 <Text style={styles.errorText}>{errorMessage}</Text>
               )}

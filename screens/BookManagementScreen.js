@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { booksService } from '../services/jsonbin';
+import { showNotification } from '../services/notificationService';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
@@ -94,6 +95,16 @@ export default function BookManagementScreen() {
       } else {
         await booksService.createBook(bookData, user.id);
         Alert.alert('Sucesso', 'Livro cadastrado!');
+        
+        try {
+          await showNotification(
+            'Livro cadastrado!',
+            `"${bookData.title}" já está disponível para venda.`,
+            { type: 'book_created' }
+          );
+        } catch (notifError) {
+          console.warn('Falha ao notificar cadastro de livro:', notifError);
+        }
       }
 
       await loadBooks(user.id);
@@ -155,7 +166,6 @@ export default function BookManagementScreen() {
   const getHorizontalMargin = () => (isSmallPhone ? 12 : 20);
   const getVerticalMargin = () => (isSmallPhone ? 15 : 20);
 
-  // Função auxiliar para obter a imagem (placeholder se não houver URL)
   const getBookImage = (book) => {
     if (book.image && book.image.trim() !== '') {
       return { uri: book.image };
@@ -224,7 +234,6 @@ export default function BookManagementScreen() {
         )}
       </View>
 
-      {/* Modal de Cadastro/Edição */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -290,7 +299,6 @@ export default function BookManagementScreen() {
         </View>
       </Modal>
 
-      {/* Modal de Confirmação de Exclusão */}
       <Modal visible={deleteModalVisible} animationType="fade" transparent onRequestClose={closeDeleteModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.deleteModalContent}>

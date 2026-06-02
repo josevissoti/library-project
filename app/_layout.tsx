@@ -1,4 +1,3 @@
-// library-project/app/_layout.tsx
 import { Stack } from 'expo-router';
 import { AuthProvider } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';

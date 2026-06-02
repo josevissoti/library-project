@@ -1,4 +1,3 @@
-// library-project/screens/ShopScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -236,7 +235,6 @@ export default function ShopScreen() {
         )}
       </ScrollView>
 
-      {/* Modal de detalhes do livro */}
       <BookDetailModal
         visible={detailModalVisible}
         book={selectedBook}

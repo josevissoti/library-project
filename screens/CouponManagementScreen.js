@@ -1,4 +1,3 @@
-// screens/CouponManagementScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, Alert,
@@ -16,7 +15,6 @@ export default function CouponManagementScreen() {
   const [validUntil, setValidUntil] = useState('');
   const [dateError, setDateError] = useState('');
 
-  // Estados para o modal de confirmação
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [couponToDelete, setCouponToDelete] = useState(null);
 
@@ -36,7 +34,6 @@ export default function CouponManagementScreen() {
     loadCoupons();
   }, [loadCoupons]);
 
-  // Máscara para data brasileira (dd/mm/aaaa)
   const handleDateChange = (text) => {
     let clean = text.replace(/\D/g, '');
     if (clean.length > 8) clean = clean.slice(0, 8);
@@ -45,7 +42,6 @@ export default function CouponManagementScreen() {
     if (clean.length > 2) formatted += '/' + clean.slice(2, 4);
     if (clean.length > 4) formatted += '/' + clean.slice(4, 8);
     setValidUntil(formatted);
-    // Validação inline
     if (clean.length === 8) {
       const day = parseInt(clean.slice(0, 2), 10);
       const month = parseInt(clean.slice(2, 4), 10);
@@ -62,7 +58,6 @@ export default function CouponManagementScreen() {
     }
   };
 
-  // Converte dd/mm/aaaa para ISO (YYYY-MM-DD) para envio
   const convertToISO = (brDate) => {
     const parts = brDate.split('/');
     if (parts.length !== 3) return null;
@@ -101,7 +96,6 @@ export default function CouponManagementScreen() {
         Alert.alert('Erro', 'Não foi possível criar o cupom');
       }
     } else {
-      // Sem data
       try {
         await couponsService.create({
           code,
@@ -221,7 +215,6 @@ export default function CouponManagementScreen() {
         />
       )}
 
-      {/* Modal de confirmação de exclusão */}
       <Modal
         visible={deleteModalVisible}
         transparent

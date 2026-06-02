@@ -1,4 +1,3 @@
-// library-project/components/CartModal.js
 import React, { useState } from 'react';
 import {
   View,
@@ -42,13 +41,11 @@ export default function CartModal({ visible, onClose }) {
       Alert.alert('Atenção', 'Digite um código de cupom.');
       return;
     }
-    // Exemplo simples: códigos fixos
     const lowerCode = couponCode.trim().toUpperCase();
     if (lowerCode === 'PROMO10') {
       applyCoupon('PROMO10', 10);
       Alert.alert('Cupom aplicado', '10% de desconto ativado!');
     } else if (lowerCode === 'FRETEGRATIS') {
-      // Cupom que zera o frete
       setFreight(0);
       setFreightInput('0');
       Alert.alert('Cupom aplicado', 'Frete grátis ativado!');
@@ -120,7 +117,6 @@ export default function CartModal({ visible, onClose }) {
             />
           )}
 
-          {/* Cupom e frete */}
           <View style={styles.optionsContainer}>
             <View style={styles.couponRow}>
               <TextInput
@@ -159,7 +155,6 @@ export default function CartModal({ visible, onClose }) {
             </View>
           </View>
 
-          {/* Resumo */}
           <View style={styles.summary}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal</Text>
@@ -181,7 +176,6 @@ export default function CartModal({ visible, onClose }) {
             </View>
           </View>
 
-          {/* Botões */}
           <View style={styles.footerButtons}>
             <TouchableOpacity
               style={[styles.footerButton, styles.clearButton]}

@@ -1,4 +1,3 @@
-// library-project/screens/OrdersScreen.js
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, ActivityIndicator,

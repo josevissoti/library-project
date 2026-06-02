@@ -1,4 +1,3 @@
-// library-project/services/jsonbin.js
 import { JSONBIN_CONFIG } from '../config';
 
 const { BIN_ID, MASTER_KEY, BASE_URL } = JSONBIN_CONFIG;
@@ -25,7 +24,6 @@ const updateBin = async (record) => {
   return (await response.json()).record;
 };
 
-// Serviço de livros
 export const booksService = {
   createBook: async (bookData, userId) => {
     const bin = await fetchBin();
@@ -92,7 +90,6 @@ export const booksService = {
     return true;
   },
 
-  // Deduz estoque após compra
   decreaseStock: async (bookId, quantity) => {
     const bin = await fetchBin();
     const book = bin.books.find(b => b.id === bookId);
@@ -103,7 +100,6 @@ export const booksService = {
   },
 };
 
-// Serviço de cupons
 export const couponsService = {
   getAll: async () => {
     const bin = await fetchBin();
@@ -147,7 +143,6 @@ export const couponsService = {
   },
 };
 
-// Serviço de pedidos
 export const ordersService = {
   create: async (orderData) => {
     const bin = await fetchBin();

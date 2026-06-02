@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { authService } from '../services/firebase';
+import { showNotification } from '../services/notificationService';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
@@ -156,6 +157,16 @@ export default function RegisterScreen({ navigation }) {
         });
         
         showMessage('Cadastro realizado com sucesso! Redirecionando...', 'success');
+        
+        try {
+          await showNotification(
+            'Cadastro concluído!',
+            'Sua conta foi criada com sucesso. Bem-vindo(a) à BookStore!',
+            { type: 'account_created' }
+          );
+        } catch (notifError) {
+          console.warn('Erro ao notificar cadastro:', notifError);
+        }
         
         setTimeout(() => {
           setName('');
@@ -400,171 +411,37 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#2e0000',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: isTablet ? 48 : 24,
-    paddingTop: 20,
-    paddingBottom: 30,
-  },
-  backButton: {
-    marginBottom: 20,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: isTablet ? 18 : 16,
-  },
-  contentWrapper: {
-    maxWidth: isTablet ? 500 : '100%',
-    width: '100%',
-    alignSelf: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  logo: {
-    width: isTablet ? 100 : 80,
-    height: isTablet ? 100 : 80,
-    borderRadius: isTablet ? 50 : 40,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: isTablet ? 28 : 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: isTablet ? 16 : 14,
-    color: '#999',
-  },
-  messageContainer: {
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  successMessage: {
-    backgroundColor: '#4caf50',
-  },
-  errorMessage: {
-    backgroundColor: '#f44336',
-  },
-  messageText: {
-    color: '#fff',
-    fontSize: isTablet ? 15 : 14,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  formContainer: {
-    marginBottom: 20,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: isTablet ? 15 : 14,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: isTablet ? 16 : 14,
-    fontSize: isTablet ? 16 : 15,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  passwordInput: {
-    flex: 1,
-    padding: isTablet ? 16 : 14,
-    fontSize: isTablet ? 16 : 15,
-    color: '#333',
-  },
-  eyeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: isTablet ? 16 : 14,
-  },
-  inputError: {
-    borderColor: '#ff6b6b',
-    borderWidth: 2,
-  },
-  errorText: {
-    color: '#ff6b6b',
-    fontSize: 11,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  passwordStrengthContainer: {
-    marginTop: 8,
-  },
-  passwordStrengthText: {
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  passwordStrengthBar: {
-    height: 4,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  passwordStrengthFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  registerButton: {
-    backgroundColor: '#6e0c0c',
-    borderRadius: 15,
-    padding: isTablet ? 18 : 16,
-    alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#6e0c0c',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  registerButtonText: {
-    color: '#fff',
-    fontSize: isTablet ? 17 : 16,
-    fontWeight: 'bold',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  footerText: {
-    color: '#999',
-    fontSize: isTablet ? 15 : 14,
-  },
-  footerLink: {
-    color: '#6e0c0c',
-    fontSize: isTablet ? 15 : 14,
-    fontWeight: 'bold',
-  },
+  container: { flex: 1, backgroundColor: '#2e0000' },
+  keyboardView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: isTablet ? 48 : 24, paddingTop: 20, paddingBottom: 30 },
+  backButton: { marginBottom: 20 },
+  backButtonText: { color: '#fff', fontSize: isTablet ? 18 : 16 },
+  contentWrapper: { maxWidth: isTablet ? 500 : '100%', width: '100%', alignSelf: 'center' },
+  logoContainer: { alignItems: 'center', marginBottom: 30 },
+  logo: { width: isTablet ? 100 : 80, height: isTablet ? 100 : 80, borderRadius: isTablet ? 50 : 40, marginBottom: 12 },
+  title: { fontSize: isTablet ? 28 : 24, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
+  subtitle: { fontSize: isTablet ? 16 : 14, color: '#999' },
+  messageContainer: { padding: 12, borderRadius: 8, marginBottom: 20, alignItems: 'center' },
+  successMessage: { backgroundColor: '#4caf50' },
+  errorMessage: { backgroundColor: '#f44336' },
+  messageText: { color: '#fff', fontSize: isTablet ? 15 : 14, fontWeight: '500', textAlign: 'center' },
+  formContainer: { marginBottom: 20 },
+  inputGroup: { marginBottom: 16 },
+  label: { fontSize: isTablet ? 15 : 14, fontWeight: '600', color: '#fff', marginBottom: 6 },
+  input: { backgroundColor: '#fff', borderRadius: 10, padding: isTablet ? 16 : 14, fontSize: isTablet ? 16 : 15, color: '#333', borderWidth: 1, borderColor: '#e0e0e0' },
+  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#e0e0e0' },
+  passwordInput: { flex: 1, padding: isTablet ? 16 : 14, fontSize: isTablet ? 16 : 15, color: '#333' },
+  eyeButton: { paddingHorizontal: 16, paddingVertical: isTablet ? 16 : 14 },
+  inputError: { borderColor: '#ff6b6b', borderWidth: 2 },
+  errorText: { color: '#ff6b6b', fontSize: 11, marginTop: 4, marginLeft: 4 },
+  passwordStrengthContainer: { marginTop: 8 },
+  passwordStrengthText: { fontSize: 11, marginBottom: 4 },
+  passwordStrengthBar: { height: 4, backgroundColor: '#e0e0e0', borderRadius: 2, overflow: 'hidden' },
+  passwordStrengthFill: { height: '100%', borderRadius: 2 },
+  registerButton: { backgroundColor: '#6e0c0c', borderRadius: 15, padding: isTablet ? 18 : 16, alignItems: 'center', marginTop: 10, shadowColor: '#6e0c0c', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
+  buttonDisabled: { opacity: 0.7 },
+  registerButtonText: { color: '#fff', fontSize: isTablet ? 17 : 16, fontWeight: 'bold' },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  footerText: { color: '#999', fontSize: isTablet ? 15 : 14 },
+  footerLink: { color: '#6e0c0c', fontSize: isTablet ? 15 : 14, fontWeight: 'bold' },
 });
